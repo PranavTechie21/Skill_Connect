@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "../hooks/use-auth"; // ✅ FIXED IMPORT
 
 export default function Applications() {
   const { user } = useAuth();
@@ -11,7 +11,7 @@ export default function Applications() {
 
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ["/api/applications", { applicantId: user?.id, statusFilter }],
-    enabled: !!user?.id && user?.userType === "job_seeker",
+    enabled: !!user?.id && user?.userType === "Professional", // ✅ FIXED USER TYPE
     queryFn: async () => {
       const params = new URLSearchParams();
       if (user?.id) params.set("applicantId", user.id);

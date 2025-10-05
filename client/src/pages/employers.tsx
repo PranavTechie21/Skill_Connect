@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertJobSchema, insertCompanySchema } from "@shared/schema";
+import { insertJobSchema, insertCompanySchema, Company, Job } from "@shared/schema";
 import { Building, Plus, X, Eye, Users, MapPin, Clock, DollarSign } from "lucide-react";
 import { z } from "zod";
 
@@ -59,12 +59,12 @@ export default function Employers() {
     },
   });
 
-  const { data: companies, isLoading: companiesLoading } = useQuery({
+  const { data: companies, isLoading: companiesLoading } = useQuery<Company[]>({
     queryKey: ["/api/companies", { ownerId: user?.id }],
     enabled: !!user?.id && user?.userType === 'employer',
   });
 
-  const { data: jobs, isLoading: jobsLoading } = useQuery({
+  const { data: jobs, isLoading: jobsLoading } = useQuery<Job[]>({
     queryKey: ["/api/jobs", { employerId: user?.id }],
     enabled: !!user?.id && user?.userType === 'employer',
   });
@@ -143,7 +143,7 @@ export default function Employers() {
     jobForm.setValue("skills", currentSkills.filter(skill => skill !== skillToRemove));
   };
 
-  const formatSalary = (min?: number, max?: number) => {
+  const formatSalary = (min?: number | null, max?: number | null) => {
     if (!min && !max) return "Salary not specified";
     if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
     if (min) return `$${min.toLocaleString()}+`;
@@ -254,14 +254,14 @@ export default function Employers() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Company</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select company" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {companies?.map((company: any) => (
+                              {companies?.map((company) => (
                                 <SelectItem key={company.id} value={company.id}>
                                   {company.name}
                                 </SelectItem>
@@ -282,10 +282,11 @@ export default function Employers() {
                         <FormItem>
                           <FormLabel>Minimum Salary</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
+                            <Input
+                              type="number"
                               placeholder="50000"
                               {...field}
+                              value={field.value || ""}
                               onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                             />
                           </FormControl>
@@ -300,10 +301,11 @@ export default function Employers() {
                         <FormItem>
                           <FormLabel>Maximum Salary</FormLabel>
                           <FormControl>
-                            <Input 
-                              type="number" 
+                            <Input
+                              type="number"
                               placeholder="80000"
                               {...field}
+                              value={field.value || ""}
                               onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
                             />
                           </FormControl>
@@ -402,7 +404,7 @@ export default function Employers() {
                 <p>Loading your jobs...</p>
               ) : jobs && jobs.length > 0 ? (
                 <div className="space-y-4">
-                  {jobs.map((job: any) => (
+                  {jobs.map((job) => (
                     <div key={job.id} className="border border-gray-200 rounded-lg p-6">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -428,10 +430,10 @@ export default function Employers() {
                           </div>
                           <p className="text-gray-700 text-sm mb-3 line-clamp-2">{job.description}</p>
                           <div className="flex flex-wrap gap-2">
-                            {job.skills.slice(0, 3).map((skill: string, index: number) => (
+                            {job.skills?.slice(0, 3).map((skill: string, index: number) => (
                               <Badge key={index} variant="outline">{skill}</Badge>
                             ))}
-                            {job.skills.length > 3 && (
+                            {job.skills && job.skills.length > 3 && (
                               <Badge variant="outline">+{job.skills.length - 3} more</Badge>
                             )}
                           </div>
@@ -452,7 +454,7 @@ export default function Employers() {
                 <div className="text-center py-12">
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No jobs posted yet</h3>
                   <p className="text-gray-600 mb-4">Start by posting your first job to attract local talent.</p>
-                  <Button onClick={() => document.querySelector('[value="post-job"]')?.click()}>
+                  <Button onClick={() => (document.querySelector('[value="post-job"]') as HTMLElement)?.click()}>
                     Post Your First Job
                   </Button>
                 </div>
@@ -469,7 +471,7 @@ export default function Employers() {
             <CardContent>
               {companies && companies.length > 0 ? (
                 <div className="space-y-6">
-                  {companies.map((company: any) => (
+                  {companies.map((company) => (
                     <div key={company.id} className="border border-gray-200 rounded-lg p-6">
                       <div className="flex items-start">
                         <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center mr-4">
@@ -520,7 +522,7 @@ export default function Employers() {
                           <FormItem>
                             <FormLabel>Website</FormLabel>
                             <FormControl>
-                              <Input placeholder="https://company.com" {...field} />
+                              <Input placeholder="https://company.com" {...field} value={field.value || ""} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -535,10 +537,11 @@ export default function Employers() {
                         <FormItem>
                           <FormLabel>Company Description</FormLabel>
                           <FormControl>
-                            <Textarea 
+                            <Textarea
                               rows={4}
                               placeholder="Describe your company, mission, and culture..."
                               {...field}
+                              value={field.value || ""}
                             />
                           </FormControl>
                           <FormMessage />
@@ -553,7 +556,7 @@ export default function Employers() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Location</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value || ""}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select location" />
@@ -576,7 +579,7 @@ export default function Employers() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Company Size</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value || ""}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select size" />
@@ -600,7 +603,7 @@ export default function Employers() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Industry</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value || ""}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select industry" />

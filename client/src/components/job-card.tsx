@@ -72,7 +72,7 @@ export default function JobCard({ job }: JobCardProps) {
       });
       return;
     }
-    if (user.userType !== 'job_seeker') {
+    if (user.userType !== 'Professional') {
       toast({
         title: "Access denied",
         description: "Only job seekers can apply for jobs.",
@@ -152,7 +152,7 @@ export default function JobCard({ job }: JobCardProps) {
               <div className="flex flex-col items-end ml-6">
                 <Button 
                   onClick={handleApply}
-                  disabled={applyMutation.isPending || user?.userType !== 'job_seeker'}
+                  disabled={applyMutation.isPending || user?.userType !== 'Professional'}
                   className="mb-2 shadow-sm"
                 >
                   {applyMutation.isPending ? "Applying..." : "Apply Now"}

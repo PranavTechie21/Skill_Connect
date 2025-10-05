@@ -44,7 +44,7 @@ export default function ProfessionalsPage() {
   const current = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
-    <section className="pb-16 bg-gray-50 min-h-screen">
+    <section className="pb-16 min-h-screen">
       {/* Simple Header */}
       <div className="pt-16 pb-8">
         <h1 className="text-center text-3xl font-semibold text-gray-900">
@@ -176,5 +176,3 @@ export default function ProfessionalsPage() {
     </section>
   );
 }
-
-

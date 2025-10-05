@@ -1,8 +1,6 @@
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Briefcase, ChevronsUpDown, DollarSign } from "lucide-react";
 import {
@@ -158,7 +156,7 @@ export default function JobSearch({ onSearch, className = "" }: JobSearchProps) 
   };
 
   return (
-    <Card className={className + " border-0 bg-white/90 backdrop-blur-xl shadow-lg"}>
+    <Card className={className + " border-0 bg-red/90 backdrop-blur-xl shadow-lg"}>
       <CardContent className="p-6">
         <div className="space-y-4">
           <AnimatedDropdown
