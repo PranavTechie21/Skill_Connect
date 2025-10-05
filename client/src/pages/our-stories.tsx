@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button";
+﻿import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -48,7 +48,7 @@ export default function OurStories() {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-500 mb-4">
             Our Success Stories
           </h1>
-          <p className="text-2x1 text-gray-200 dark:text-gray-300 max-w-3xl mx-auto">
+          <p className="light:texttext-xl font-semibold mb-2 text-gray-900 dark:text-white">
             Real experiences from people who found success through SkillConnect.
           </p>
         </motion.section>
@@ -68,7 +68,7 @@ export default function OurStories() {
                 <h3 className="text-xl font-semibold mb-2 text-gray-900 dark:text-white">
                   {story.title}
                 </h3>
-                <p className="text-gray-600 dark:text-gray-300 mb-4">
+                <p className="text-gray-900 mb-4">
                   {story.content}
                 </p>
                 <p className="text-sm text-purple-600 dark:text-purple-400">
@@ -88,7 +88,7 @@ export default function OurStories() {
           <h2 className="text-3xl text-pink-600 dark:text-pink-400 font-bold mb-6">
             Share Your Success
           </h2>
-          <p className="text-xl text-gray-700 dark:text-gray-300 mb-8">
+          <p className="text-xl text-gray-800 dark:text-gray-300 mb-8">
             Has SkillConnect helped you find success? We'd love to hear your
             story!
           </p>

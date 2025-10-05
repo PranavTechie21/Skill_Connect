@@ -25,7 +25,7 @@ const AboutUs = () => {
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 dark:from-purple-400 dark:to-pink-400 mb-4">
             About SkillConnect
           </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
+          <p className="text-xl text-gray-800 dark:text-gray-300 max-w-3xl mx-auto">
             Connecting  talent with perfect opportunities, building stronger communities through skills-based matching.
           </p>
         </motion.section>
