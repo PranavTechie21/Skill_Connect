@@ -2,134 +2,232 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Light mode styles (default) */
-:root {
-  --bg-main: #ffffff;
-  --text-main: #111827;
-  --bg-card: #ffffff;
-  --text-card: #111827;
-  --border-color: #e5e7eb;
-}
-
-/* Dark mode styles */
-.dark {
-  --bg-main: #111827;
-  --text-main: #ffffff;
-  --bg-card: #1f2937;
-  --text-card: #ffffff;
-  --border-color: #374151;
-}
-
-/* Base styles */
-body {
-  background-color: var(--bg-main);
-  color: var(--text-main);
-  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-}
-
-/* Card styles */
-.card {
-  background-color: var(--bg-card);
-  color: var(--text-card);
-  border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-}
-
-/* Custom dark mode transitions */
-
-
 @layer base {
+  :root {
+    --background: #ffffff;
+    --foreground: #111827;
+    --card: #ffffff;
+    --card-foreground: #111827;
+    --border: #e5e7eb;
+    --input: #e5e7eb;
+    --primary: #0284c7;
+    --primary-foreground: #ffffff;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --accent: #f8fafc;
+    --accent-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --popover: #ffffff;
+    --popover-foreground: #0f172a;
+    --destructive: #ef4444;
+    --destructive-foreground: #f8fafc;
+    --ring: #94a3b8;
+    --radius: 0.5rem;
+    
+    --chart-1: #0ea5e9;
+    --chart-2: #10b981;
+    --chart-3: #f59e0b;
+    --chart-4: #ef4444;
+    --chart-5: #8b5cf6;
+    
+    --sidebar-background: #f8fafc;
+    --sidebar-foreground: #0f172a;
+    --sidebar-primary: #0284c7;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f1f5f9;
+    --sidebar-accent-foreground: #0f172a;
+    --sidebar-border: #e2e8f0;
+    --sidebar-ring: #94a3b8;
+  }
+  
+.pixel-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.pixel-card {
+  height: 400px;
+  width: 300px;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
+  border: 1px solid #27272a;
+  border-radius: 25px;
+  isolation: isolate;
+  transition: border-color 200ms cubic-bezier(0.5, 1, 0.89, 1);
+  user-select: none;
+}
+
+.pixel-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  aspect-ratio: 1;
+  background: radial-gradient(circle, #09090b, transparent 85%);
+  opacity: 0;
+  transition: opacity 800ms cubic-bezier(0.5, 1, 0.89, 1);
+}
+
+.pixel-card:hover::before,
+.pixel-card:focus-within::before {
+  opacity: 1;
+}
+
+  .dark {
+    --background: #111827;
+    --foreground: #ffffff;
+    --card: #1f2937;
+    --card-foreground: #ffffff;
+    --border: #374151;
+    --input: #374151;
+    --primary: #0ea5e9;
+    --primary-foreground: #f8fafc;
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+    --accent: #1e293b;
+    --accent-foreground: #f8fafc;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --popover: #0f172a;
+    --popover-foreground: #f8fafc;
+    --destructive: #ef4444;
+    --destructive-foreground: #f8fafc;
+    --ring: #1e293b;
+    
+    --chart-1: #38bdf8;
+    --chart-2: #34d399;
+    --chart-3: #fbbf24;
+    --chart-4: #f87171;
+    --chart-5: #a78bfa;
+    
+    --sidebar-background: #0f172a;
+    --sidebar-foreground: #f8fafc;
+    --sidebar-primary: #0ea5e9;
+    --sidebar-primary-foreground: #f8fafc;
+    --sidebar-accent: #1e293b;
+    --sidebar-accent-foreground: #f8fafc;
+    --sidebar-border: #1e293b;
+    --sidebar-ring: #1e293b;
+  }
+
   * {
     @apply border-border;
   }
 
   body {
-    @apply font-sans antialiased bg-background text-foreground;
+    @apply bg-background text-foreground font-sans antialiased;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
   }
 }
 
-/* Responsive Gradients */
-.gradient-hero {
-  background: linear-gradient(135deg,
-      hsl(218, 100%, 97%) 0%,
-      hsl(221, 84%, 90%) 100%);
-}
+@layer components {
+  .card {
+    @apply bg-card text-card-foreground border border-border rounded-lg shadow-sm;
+  }
 
-.gradient-secondary {
-  background: linear-gradient(135deg,
-      hsl(142, 71%, 95%) 0%,
-      hsl(142, 71%, 85%) 100%);
-}
-
-.gradient-accent {
-  background: linear-gradient(135deg,
-      hsl(41, 96%, 95%) 0%,
-      hsl(41, 96%, 75%) 100%);
-}
-
-/* Responsive Tweaks */
-@media (max-width: 640px) {
-
-  /* sm */
   .gradient-hero {
-    background: linear-gradient(160deg,
-        hsl(218, 100%, 98%) 0%,
-        hsl(221, 84%, 94%) 100%);
+    background: linear-gradient(135deg, hsl(218, 100%, 97%), hsl(221, 84%, 90%));
+  }
+
+  .gradient-secondary {
+    background: linear-gradient(135deg, hsl(142, 71%, 95%), hsl(142, 71%, 85%));
+  }
+
+  .gradient-accent {
+    background: linear-gradient(135deg, hsl(41, 96%, 95%), hsl(41, 96%, 75%));
+  }
+
+  .mesh-hero-overlay {
+    background:
+      radial-gradient(1000px circle at 15% 10%, rgba(255,255,255,0.22), transparent 60%),
+      radial-gradient(800px circle at 85% 20%, rgba(255,255,255,0.16), transparent 60%),
+      radial-gradient(900px circle at 50% 85%, rgba(255,255,255,0.14), transparent 60%);
+  }
+
+  .grid-overlay {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+    background-size: 40px 40px;
+    background-position: -1px -1px;
+  }
+
+  .hero-animated-bg {
+    background-image:
+      radial-gradient(1200px 800px at 10% 10%, rgba(250, 204, 21, 0.35), transparent 60%),
+      radial-gradient(1000px 700px at 90% 15%, rgba(59, 130, 246, 0.25), transparent 60%),
+      radial-gradient(1000px 700px at 15% 90%, rgba(16, 185, 129, 0.25), transparent 60%),
+      radial-gradient(1200px 800px at 85% 85%, rgba(236, 72, 153, 0.25), transparent 60%);
+    background-repeat: no-repeat;
+    background-size: 120% 120%;
+    animation: meshShift 18s ease-in-out infinite;
+    filter: saturate(110%);
   }
 }
 
-@media (min-width: 641px) and (max-width: 1024px) {
-
-  /* md-lg */
-  .gradient-hero {
-    background: linear-gradient(140deg,
-        hsl(218, 100%, 96%) 0%,
-        hsl(221, 84%, 88%) 100%);
+@layer utilities {
+  @media (max-width: 640px) {
+    .gradient-hero {
+      background: linear-gradient(160deg, hsl(218, 100%, 98%), hsl(221, 84%, 94%));
+    }
   }
-}
 
-@media (min-width: 1025px) {
-
-  /* xl+ */
-  .gradient-hero {
-    background: linear-gradient(135deg,
-        hsl(218, 100%, 97%) 0%,
-        hsl(221, 84%, 90%) 100%);
+  @media (min-width: 641px) and (max-width: 1024px) {
+    .gradient-hero {
+      background: linear-gradient(140deg, hsl(218, 100%, 96%), hsl(221, 84%, 88%));
+    }
   }
-}
 
-/* Modern hero overlays */
-.mesh-hero-overlay {
-  background:
-    radial-gradient(1000px circle at 15% 10%, rgba(255,255,255,0.22), transparent 60%),
-    radial-gradient(800px circle at 85% 20%, rgba(255,255,255,0.16), transparent 60%),
-    radial-gradient(900px circle at 50% 85%, rgba(255,255,255,0.14), transparent 60%);
-}
+  @media (min-width: 1025px) {
+    .gradient-hero {
+      background: linear-gradient(135deg, hsl(218, 100%, 97%), hsl(221, 84%, 90%));
+    }
+  }
 
-.grid-overlay {
-  background-image:
-    linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
-  background-size: 40px 40px, 40px 40px;
-  background-position: -1px -1px, -1px -1px;
-}
-
-/* Animated gradient mesh for hero (inspired by pattern libraries) */
-@keyframes meshShift {
-  0% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
-  50% { background-position: 100% 0%, 0% 100%, 100% 100%, 0% 0%; }
-  100% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
-}
-
-.hero-animated-bg {
-  background-image:
-    radial-gradient(1200px 800px at 10% 10%, rgba(250, 204, 21, 0.35), transparent 60%),
-    radial-gradient(1000px 700px at 90% 15%, rgba(59, 130, 246, 0.25), transparent 60%),
-    radial-gradient(1000px 700px at 15% 90%, rgba(16, 185, 129, 0.25), transparent 60%),
-    radial-gradient(1200px 800px at 85% 85%, rgba(236, 72, 153, 0.25), transparent 60%);
-  background-repeat: no-repeat;
-  background-size: 120% 120%, 120% 120%, 120% 120%, 120% 120%;
-  animation: meshShift 18s ease-in-out infinite;
-  filter: saturate(110%);
+  @keyframes meshShift {
+    0% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
+    50% { background-position: 100% 0%, 0% 100%, 100% 100%, 0% 0%; }
+    100% { background-position: 0% 0%, 100% 0%, 0% 100%, 100% 100%; }
+  }
+  
+  .dark .text-gray-600,
+  .dark .text-gray-700,
+  .dark .text-gray-900 {
+    @apply text-gray-300;
+  }
+  
+  .dark .text-gray-500 {
+    @apply text-gray-400;
+  }
+  
+  .dark .bg-white\/80,
+  .dark .bg-white\/60 {
+    @apply bg-gray-800/80;
+  }
+  
+  .dark .bg-gradient-to-br.from-green-50.to-blue-50,
+  .dark .bg-gradient-to-br.from-blue-50.via-indigo-50.to-purple-50,
+  .dark .bg-gradient-to-r.from-green-100.via-blue-100.to-purple-100,
+  .dark .bg-gradient-to-br.from-pink-50.via-rose-50.to-red-50 {
+    @apply from-gray-900 via-gray-800 to-gray-900;
+  }
+  
+  .dark .border-white {
+    @apply border-gray-700;
+  }
+  
+  /* Fix for ChromaGrid items */
+  .dark .chroma-item {
+    @apply text-gray-100;
+  }
+  
+  .dark .chroma-item-subtitle,
+  .dark .chroma-item-location {
+    @apply text-gray-300;
+  }
 }
