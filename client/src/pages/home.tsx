@@ -217,7 +217,7 @@ export default function Home() {
 
       {/* Services Grid */}
       <motion.section
-        className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900"
+        className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
@@ -254,7 +254,7 @@ export default function Home() {
 
       {/* Skills-Based Matching Section */}
       <motion.section
-        className="py-12 sm:py-16 lg:py-16 bg-gradient-to-r from-green-50 via-blue-50 to-purple-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
+        className="py-12 sm:py-16 lg:py-16 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
@@ -317,7 +317,7 @@ export default function Home() {
 
       {/* Testimonials */}
       <motion.section
-        className="py-12 sm:py-16 lg:py-16 bg-gradient-to-br from-pink-50 via-rose-50 to-red-50 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900"
+        className="py-12 sm:py-16 lg:py-16 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-slate-900 dark:via-purple-900 dark:to-slate-900"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
@@ -368,7 +368,7 @@ export default function Home() {
 
       {/* Bold CTA */}
       <motion.section
-        className="py-12 sm:py-16 lg:py-20"
+        className="py-12 sm:py-16 lg:py-20 bg:black dark:bg-slate-900"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
@@ -380,7 +380,7 @@ export default function Home() {
             <p className="mt-2 sm:mt-4 text-base sm:text-lg text-white/90 max-w-md sm:max-w-2xl mx-auto">Join a growing network of local talent and employers. Post jobs, apply with confidence, and get matched by skills — not just keywords.</p>
             <div className="mt-4 sm:mt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register"><Button size="lg" variant="secondary" className="px-4 sm:px-8 py-2 sm:py-3">Get Started</Button></Link>
-              <Link href="/jobs"><Button size="lg" variant="outline" className="px-4 sm:px-8 py-2 sm:py-3 bg-white/10 text-white hover:bg-white/20">Browse Jobs</Button></Link>
+              <Link href="/jobs"><Button size="lg" variant="outline" className="px-4 sm:px-8 py-2 sm:py-3  text-yellow-600 hover:bg-white/20">Browse Jobs</Button></Link>
             </div>
           </div>
         </div>
@@ -388,7 +388,7 @@ export default function Home() {
 
       {/* Local Professionals Section */}
       <motion.section
-        className="py-12 sm:py-16 lg:py-16 bg-gradient-to-br from-green-50 to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
+        className="py-12 sm:py-16 lg:py-16 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
@@ -410,7 +410,7 @@ export default function Home() {
 
       {/* For Employers Section */}
       <motion.section
-        className="py-12 sm:py-16 lg:py-16 bg-gradient-to-br from-green-50 to-blue-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
+        className="py-12 sm:py-16 lg:py-16 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-slate-800 dark:via-slate-900 dark:to-slate-950"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
@@ -426,7 +426,7 @@ export default function Home() {
 
       {/* Footer */}
       <motion.footer
-        className="bg-gradient-to-br from-gray-900 via-purple-900 to-gray-800 dark:from-slate-900 dark:via-purple-950 dark:to-slate-900 text-white py-12 sm:py-16"
+        className="bg-gradient-to-br from-gray-900 via-purple-900 to-gray-800 light:from-gray-50 light:via-purple-50 light:to-gray-100 text-gray-900 dark:text-white py-12 sm:py-16"
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, amount: 0.3 }}
@@ -435,35 +435,35 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 sm:gap-8 text-center">
             <div>
-              <h3 className="text-xl sm:text-2xl font-bold mb-2 sm:mb-4">SkillConnect</h3>
-              <p className="text-gray-300 mb-4 sm:mb-6 max-w-xs mx-auto text-sm sm:text-base">
+              <h3 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2 sm:mb-4">SkillConnect</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-4 sm:mb-6 max-w-xs mx-auto text-sm sm:text-base">
                 Connecting talent with perfect opportunities through skills-based matching.
                 Build your community, grow your career.
               </p>
             </div>
             <div>
-              <h4 className="text-base sm:text-lg font-semibold mb-2 sm:mb-4">For Job Seekers</h4>
-              <ul className="space-y-2 text-gray-400 text-sm sm:text-base">
-                <li><Link href="/jobs" className="hover:text-white">Browse Jobs</Link></li>
-                <li><Link href="/profile" className="hover:text-white">Create Profile</Link></li>
+              <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 sm:mb-4">For Job Seekers</h4>
+              <ul className="space-y-2 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                <li><Link href="/jobs" className="hover:text-gray-900 dark:hover:text-white">Browse Jobs</Link></li>
+                <li><Link href="/profile" className="hover:text-gray-900 dark:hover:text-white">Create Profile</Link></li>
               </ul>
             </div>
             <div>
-              <h4 className="text-base sm:text-lg font-semibold mb-2 sm:mb-4">For Employers</h4>
-              <ul className="space-y-2 text-gray-400 text-sm sm:text-base">
-                <li><Link href="/employers" className="hover:text-white">Post Jobs</Link></li>
-                <li><Link href="/jobs" className="hover:text-white">Browse Talent</Link></li>
+              <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 sm:mb-4">For Employers</h4>
+              <ul className="space-y-2 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
+                <li><Link href="/employers" className="hover:text-gray-900 dark:hover:text-white">Post Jobs</Link></li>
+                <li><Link href="/jobs" className="hover:text-gray-900 dark:hover:text-white">Browse Talent</Link></li>
               </ul>
             </div>
           </div>
-          <div className="mt-6 sm:mt-12 flex flex-col sm:flex-row justify-between items-center text-sm sm:text-base text-gray-400">
-            <p className="mb-4 sm:mb-0">
+          <div className="mt-6 sm:mt-12 flex flex-col sm:flex-row justify-between items-center text-sm sm:text-base text-gray-600 dark:text-gray-400">
+            <p className="mb-4 sm:mb-0 text-gray-600 dark:text-gray-400">
               © {new Date().getFullYear()} SkillConnect. All rights reserved.
             </p>
             <div className="flex space-x-4 sm:space-x-6">
-              <a href="#" className="hover:text-white">Privacy Policy</a>
-              <a href="#" className="hover:text-white">Terms of Service</a>
-              <a href="#" className="hover:text-white">Contact</a>
+              <a href="#" className="hover:text-gray-900 dark:hover:text-white">Privacy Policy</a>
+              <a href="#" className="hover:text-gray-900 dark:hover:text-white">Terms of Service</a>
+              <a href="#" className="hover:text-gray-900 dark:hover:text-white">Contact</a>
             </div>
           </div>
           {/* Motivational Quote Card */}
@@ -474,10 +474,10 @@ export default function Home() {
             viewport={{ once: true, amount: 0.3 }}
             variants={sectionVariants}
           >
-            <div className="bg-slate-800/80 dark:bg-slate-700/80 p-4 sm:p-6 rounded-xl shadow-lg border border-slate-700/50 backdrop-blur-md max-w-sm sm:max-w-md mx-auto text-center transition-opacity duration-1000">
-              <h3 className="text-lg sm:text-xl font-extrabold text-white mb-2">Motivational Quote</h3>
-              <p className="text-gray-300 italic mb-2 sm:mb-4 text-sm sm:text-base">{motivationalQuote.text}</p>
-              <p className="text-xs sm:text-sm text-gray-500">- {motivationalQuote.author}</p>
+            <div className="bg-white/80 dark:bg-slate-800/80 p-4 sm:p-6 rounded-xl shadow-lg border border-gray-200 dark:border-slate-700 backdrop-blur-md max-w-sm sm:max-w-md mx-auto text-center transition-opacity duration-1000">
+              <h3 className="text-lg sm:text-xl font-extrabold text-gray-900 dark:text-white mb-2">Motivational Quote</h3>
+              <p className="text-gray-600 dark:text-gray-300 italic mb-2 sm:mb-4 text-sm sm:text-base">{motivationalQuote.text}</p>
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">- {motivationalQuote.author}</p>
             </div>
           </motion.div>
           {/* Signature Footer */}
