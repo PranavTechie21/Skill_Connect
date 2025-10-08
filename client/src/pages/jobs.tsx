@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import JobSearch from "@/components/job-search";
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Briefcase, MapPin, Clock, DollarSign, TrendingUp, Filter } from "lucide-react";
+import { Briefcase, MapPin, Clock, DollarSign, TrendingUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
 import {
@@ -75,59 +75,19 @@ export default function Jobs() {
           </p>
         </motion.div>
 
-        <JobSearch onSearch={setFilters} />
+        <JobSearch onSearch={(searchFilters) => {
+          setFilters(current => ({
+            ...current,
+            location: searchFilters.location,
+            jobType: searchFilters.jobType,
+            search: searchFilters.search,
+            skills: current.skills // maintain existing skills
+          }))
+        }} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mt-8">
-          {/* Filters sidebar */}
-          <div className="lg:col-span-1">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <Filter className="w-5 h-5" />
-                  <h3 className="font-semibold">Filters</h3>
-                </div>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Location
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="City, State..."
-                      className="w-full p-2 border rounded-md"
-                      value={filters.location}
-                      onChange={(e) =>
-                        setFilters({ ...filters, location: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-sm font-medium mb-2 block">
-                      Job Type
-                    </label>
-                    <select
-                      className="w-full p-2 border rounded-md"
-                      value={filters.jobType}
-                      onChange={(e) =>
-                        setFilters({ ...filters, jobType: e.target.value })
-                      }
-                    >
-                      <option value="">All Types</option>
-                      <option value="full-time">Full Time</option>
-                      <option value="part-time">Part Time</option>
-                      <option value="contract">Contract</option>
-                      <option value="remote">Remote</option>
-                    </select>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
+        <div className="mt-8">
           {/* Jobs list */}
-          <div className="lg:col-span-3">
+          <div>
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">

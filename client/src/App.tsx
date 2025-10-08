@@ -15,6 +15,7 @@ import EmployeeDashboard from "./pages/employee-dashboard";
 import EmployerDashboard from "./pages/employer-dashboard";
 import Applications from "./pages/applications";
 import { AuthProvider } from "./contexts/AuthContext";
+import SubmitStory from "./pages/submit-story";
 
 export default function App() {
   return (
@@ -37,6 +38,7 @@ export default function App() {
                 <Route path="/employer" element={<EmployerDashboard />} />
                 <Route path="/applications" element={<Applications />} />
                 <Route path="/dashboards" element={<Dashboards />} />
+                <Route path="/submit-story" element={<SubmitStory />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </main>

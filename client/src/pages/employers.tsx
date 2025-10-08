@@ -13,8 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
-import { insertJobSchema, insertCompanySchema, Company, Job } from "@shared/schema";
+import { insertJobSchema, insertCompanySchema, Company, Job } from "../../shared/schema";
 import { Building, Plus, X, Eye, Users, MapPin, Clock, DollarSign } from "lucide-react";
 import { z } from "zod";
 
@@ -23,6 +22,31 @@ type JobData = z.infer<typeof jobSchema>;
 
 const companySchema = insertCompanySchema.omit({ ownerId: true });
 type CompanyData = z.infer<typeof companySchema>;
+
+// Helper function to fetch data
+const fetcher = async ({ queryKey }: { queryKey: readonly unknown[] }) => {
+  const response = await fetch(queryKey[0] as string);
+  if (!response.ok) {
+    throw new Error('Network response was not ok');
+  }
+  return response.json();
+};
+
+// apiRequest function
+const apiRequest = async (method: string, url: string, data: any) => {
+    const response = await fetch(url, {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Something went wrong');
+    }
+    return response;
+};
 
 export default function Employers() {
   const { user } = useAuth();
@@ -61,12 +85,14 @@ export default function Employers() {
 
   const { data: companies, isLoading: companiesLoading } = useQuery<Company[]>({
     queryKey: ["/api/companies", { ownerId: user?.id }],
-    enabled: !!user?.id && user?.userType === 'employer',
+    queryFn: fetcher,
+    enabled: !!user?.id && user?.userType === 'Employer',
   });
 
   const { data: jobs, isLoading: jobsLoading } = useQuery<Job[]>({
     queryKey: ["/api/jobs", { employerId: user?.id }],
-    enabled: !!user?.id && user?.userType === 'employer',
+    queryFn: fetcher,
+    enabled: !!user?.id && user?.userType === 'Employer',
   });
 
   const createJobMutation = useMutation({
@@ -150,7 +176,7 @@ export default function Employers() {
     return `Up to $${max?.toLocaleString()}`;
   };
 
-  if (!user || user.userType !== 'employer') {
+  if (!user || user.userType !== 'Employer') {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Card>

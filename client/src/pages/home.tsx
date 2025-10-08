@@ -2,22 +2,21 @@ import { Link } from "wouter";
 import TextType from "@/components/TextType";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, BarChart2, Target, GraduationCap } from "lucide-react";
+import {  BarChart2, Target, GraduationCap, MapPin, Users, Star } from "lucide-react";
 
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/components/theme-provider";
 import ChromaGrid, { ChromaItem } from "@/components/ChromaGrid";
-import { ModeToggle } from "@/components/ui/dark-mode-toggle";
 import { motion } from "framer-motion";
 
 // Add a new component for the feature items
+// Enhanced FeatureItem component
 const FeatureItem = ({ icon: Icon, text }: { icon: React.ComponentType<{ className?: string }>; text: string }) => (
-  <div className="flex items-center">
-    <Icon className="text-secondary mr-2 h-5 w-5" />
-    <span>{text}</span>
+  <div className="flex items-center bg-white/60 dark:bg-slate-800/60 px-4 py-3 rounded-xl backdrop-blur-md border border-white/20 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-105">
+    <Icon className="text-blue-600 dark:text-blue-400 mr-3 h-6 w-6 flex-shrink-0" />
+    <span className="font-semibold text-slate-800 dark:text-white text-base whitespace-nowrap">{text}</span>
   </div>
 );
-
 export default function Home() {
   // booking/form state reserved for future features
   const workers = [
@@ -43,11 +42,9 @@ export default function Home() {
     const interval = setInterval(() => {
       const randomIndex = Math.floor(Math.random() * quotes.length);
       setMotivationalQuote(quotes[randomIndex]);
-    }, 5000); // Refresh every 1.5 seconds
+    }, 5000); // Refresh every 5 seconds
     return () => clearInterval(interval); // Cleanup on unmount
   }, []);
-
-  // booking functionality reserved for future - submitBooking removed to avoid unused variable errors
 
   const chromaItems: ChromaItem[] = workers.map(worker => ({
     image: worker.img,
@@ -149,13 +146,12 @@ export default function Home() {
                     ✨ Post a Job
                   </Button>
                 </Link>
-                <ModeToggle />
               </div>
-              <div className="mt-6 sm:mt-8 flex flex-wrap justify-center sm:justify-start space-x-4 sm:space-x-8 text-sm sm:text-base text-slate-800/90 dark:text-white/90">
-                <FeatureItem icon={CheckCircle} text="100% Local Focus" />
-                <FeatureItem icon={CheckCircle} text="Skills-Based Matching" />
-                <FeatureItem icon={CheckCircle} text="Free to Join" />
-              </div>
+<div className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center sm:justify-start">
+  <FeatureItem icon={MapPin} text="100% Local Focus" />
+  <FeatureItem icon={Users} text="Skills-Based Matching" />
+  <FeatureItem icon={Star} text="Free to Join" />
+</div>
             </div>
             <div className="lg:pl-8 mt-6 lg:mt-0 flex justify-center">
               <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl aspect-[9/16] w-full max-w-xs lg:max-w-md">
@@ -354,7 +350,7 @@ export default function Home() {
             <p className="mt-2 sm:mt-4 text-base sm:text-lg text-white/90 max-w-md sm:max-w-2xl mx-auto">Join a growing network of local talent and employers. Post jobs, apply with confidence, and get matched by skills — not just keywords.</p>
             <div className="mt-4 sm:mt-8 flex flex-col sm:flex-row gap-4 justify-center">
               <Link href="/register"><Button size="lg" variant="secondary" className="px-4 sm:px-8 py-2 sm:py-3">Get Started</Button></Link>
-              <Link href="/jobs"><Button size="lg" variant="outline" className="px-4 sm:px-8 py-2 sm:py-3 text-yellow-600 hover:bg-white/20">Browse Jobs</Button></Link>
+              <Link href="/jobs"><Button size="lg" variant="outline" className="px-4 sm:px-8 py-2 sm:py-3 text-pink-600 bg-yellow-100 hover:bg-yellow/80">Browse Jobs</Button></Link>
             </div>
           </div>
         </div>
@@ -418,7 +414,7 @@ export default function Home() {
             <div>
               <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 sm:mb-4">For Job Seekers</h4>
               <ul className="space-y-2 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                <li><Link href="/jobs" className="hover:text-gray-900 dark:hover:text-white">Browse Jobs</Link></li>
+                <li><Link href="/jobs" className="hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white">Browse Jobs</Link></li>
                 <li><Link href="/profile" className="hover:text-gray-900 dark:hover:text-white">Create Profile</Link></li>
               </ul>
             </div>

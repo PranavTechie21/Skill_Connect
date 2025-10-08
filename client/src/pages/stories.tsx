@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useToast } from "../hooks/use-toast";
 import { useAuth } from "../hooks/use-auth";
 import { Button } from "../components/ui/button";
-import { Card } from "../components/ui/card";
+import { apiFetch } from "../lib/api";
 
 interface Story {
   id: string;
@@ -30,7 +30,7 @@ const OurStories = () => {
 
   async function fetchStories() {
     try {
-      const response = await fetch("http://localhost:5001/api/stories");
+      const response = await apiFetch("/api/stories");
       if (!response.ok) throw new Error("Failed to fetch stories");
       const data = await response.json();
       setStories(data);

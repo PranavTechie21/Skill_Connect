@@ -110,7 +110,7 @@ export default function JobSearch({ onSearch, className = "" }: JobSearchProps) 
 
     return (
       <div className="relative w-full">
-        <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+        <label className="block text-sm font-medium text-foreground mb-2">{label}</label>
         <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="w-full justify-between pl-10 rounded-xl h-12">
@@ -123,7 +123,7 @@ export default function JobSearch({ onSearch, className = "" }: JobSearchProps) 
               </motion.span>
             </Button>
           </DropdownMenuTrigger>
-          <div className="pointer-events-none absolute left-3 top-[2.35rem] text-gray-400">
+          <div className="pointer-events-none absolute left-3 top-[2.35rem] text-muted-foreground">
             <Icon className="h-5 w-5" />
           </div>
           <AnimatePresence>
@@ -134,13 +134,13 @@ export default function JobSearch({ onSearch, className = "" }: JobSearchProps) 
                   animate="open"
                   exit="closed"
                   variants={dropdownVariants}
-                  className="p-2 rounded-lg bg-white shadow-xl"
+                  className="p-2 rounded-lg bg-background shadow-xl"
                 >
                   {options.map((option) => (
                     <DropdownMenuItem key={option} onSelect={() => setValue(option)}>
                       <motion.div
                         variants={itemVariants}
-                        className="flex items-center gap-2 w-full p-2 text-xs font-medium rounded-md hover:bg-indigo-100 text-slate-700 hover:text-indigo-500 transition-colors cursor-pointer"
+                        className="flex items-center gap-2 w-full p-2 text-sm font-medium rounded-md hover:bg-accent text-foreground hover:text-accent-foreground transition-colors cursor-pointer"
                       >
                         <span>{option}</span>
                       </motion.div>

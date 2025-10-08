@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MessageSquareQuote } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useToast } from "@/hooks/use-toast";
 
 const stories = [
   {
@@ -49,7 +51,22 @@ const StoryCard = ({ story, index }: { story: typeof stories[0], index: number }
 
 export default function OurStories() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { toast } = useToast();
   const title = "Our Success Stories";
+
+  const handleShareClick = () => {
+    if (!user) {
+      toast({
+        title: "Login Required",
+        description: "Please login to share your story",
+        variant: "destructive",
+      });
+      navigate("/login?redirect=/submit-story");
+    } else {
+      navigate("/submit-story");
+    }
+  };
 
   const sentenceVariants = {
     hidden: { opacity: 1 },
@@ -124,7 +141,7 @@ export default function OurStories() {
                     <div className="pt-4 md:pt-0 flex-shrink-0">
                         <Button
                             size="lg"
-                            onClick={() => navigate("/submit-story")}
+                            onClick={handleShareClick}
                             className="shadow-lg hover:shadow-xl transition-shadow duration-300"
                         >
                             Submit Your Story
