@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import TextType from "@/components/TextType";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -136,12 +136,12 @@ export default function Home() {
                 Build your professional network and discover opportunities in your community.
               </p>
               <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-4">
-                <Link href="/jobs">
+                <Link to="/jobs">
                   <Button size="lg" className="text-lg px-6 sm:px-8 py-3 sm:py-4 bg-pink-500 hover:bg-yellow-500 text-white font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
                     🚀 Find Your Next Role
                   </Button>
                 </Link>
-                <Link href="/register">
+                <Link to="/signup">
                   <Button variant="outline" size="lg" className="text-lg px-6 sm:px-8 py-3 sm:py-4 hover:bg-yellow-500 border-slate-900 dark:border-white text-slate-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-800 hover:text-purple-600 font-bold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all">
                     ✨ Post a Job
                   </Button>
@@ -349,8 +349,8 @@ export default function Home() {
             <h2 className="text-2xl sm:text-3xl lg:text-5xl font-extrabold tracking-tight">Build Your Future Now</h2>
             <p className="mt-2 sm:mt-4 text-base sm:text-lg text-white/90 max-w-md sm:max-w-2xl mx-auto">Join a growing network of local talent and employers. Post jobs, apply with confidence, and get matched by skills — not just keywords.</p>
             <div className="mt-4 sm:mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/register"><Button size="lg" variant="secondary" className="px-4 sm:px-8 py-2 sm:py-3">Get Started</Button></Link>
-              <Link href="/jobs"><Button size="lg" variant="outline" className="px-4 sm:px-8 py-2 sm:py-3 text-pink-600 bg-yellow-100 hover:bg-yellow/80">Browse Jobs</Button></Link>
+              <Link to="/signup"><Button size="lg" variant="secondary" className="px-4 sm:px-8 py-2 sm:py-3">Get Started</Button></Link>
+              <Link to="/jobs"><Button size="lg" variant="outline" className="px-4 sm:px-8 py-2 sm:py-3 text-pink-600 bg-yellow-100 hover:bg-yellow/80">Browse Jobs</Button></Link>
             </div>
           </div>
         </div>
@@ -414,15 +414,15 @@ export default function Home() {
             <div>
               <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 sm:mb-4">For Job Seekers</h4>
               <ul className="space-y-2 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                <li><Link href="/jobs" className="hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white">Browse Jobs</Link></li>
-                <li><Link href="/profile" className="hover:text-gray-900 dark:hover:text-white">Create Profile</Link></li>
+                <li><Link to="/jobs" className="hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-900 dark:hover:text-white">Browse Jobs</Link></li>
+                <li><Link to="/profile" className="hover:text-gray-900 dark:hover:text-white">Create Profile</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white mb-2 sm:mb-4">For Employers</h4>
               <ul className="space-y-2 text-gray-600 dark:text-gray-400 text-sm sm:text-base">
-                <li><Link href="/employers" className="hover:text-gray-900 dark:hover:text-white">Post Jobs</Link></li>
-                <li><Link href="/jobs" className="hover:text-gray-900 dark:hover:text-white">Browse Talent</Link></li>
+                <li><Link to="/signup" className="hover:text-gray-900 dark:hover:text-white">Post Jobs</Link></li>
+                <li><Link to="/jobs" className="hover:text-gray-900 dark:hover:text-white">Browse Talent</Link></li>
               </ul>
             </div>
           </div>
@@ -433,7 +433,7 @@ export default function Home() {
             <div className="flex space-x-4 sm:space-x-6">
               <a href="#" className="hover:text-gray-900 dark:hover:text-white">Privacy Policy</a>
               <a href="#" className="hover:text-gray-900 dark:hover:text-white">Terms of Service</a>
-              <a href="#" className="hover:text-gray-900 dark:hover:text-white">Contact</a>
+              <Link to="/about" className="hover:text-gray-900 dark:hover:text-white">Contact</Link>
             </div>
           </div>
           {/* Motivational Quote Card */}

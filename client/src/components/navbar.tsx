@@ -134,7 +134,7 @@ export default function Navbar() {
                     Sign In
                   </Button>
                 </Link>
-                <Link to="/register">
+                <Link to="/signup">
                   <Button
                     size="lg"
                     className="rounded-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
@@ -241,7 +241,7 @@ export default function Navbar() {
                         Sign In
                       </Button>
                     </Link>
-                    <Link to="/register" onClick={() => setIsMenuOpen(false)}>
+                    <Link to="/signup" onClick={() => setIsMenuOpen(false)}>
                       <Button className="w-full justify-start rounded-full bg-gradient-to-r from-purple-600 to-pink-600">
                         Sign Up
                       </Button>
