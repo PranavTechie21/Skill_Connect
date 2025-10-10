@@ -1,18 +1,27 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "@/components/ui/dark-mode-toggle";
-import { useAuth } from "../hooks/use-auth"; // or check exact path
-import { User, LogOut, Menu, X, Info, BookOpen, LayoutDashboard } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogOut, Menu, X, Info, BookOpen, LayoutDashboard } from "lucide-react";
+import { normalizeUserType } from "@/lib/utils";
 import { useState } from "react";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isMarketingHome = location.pathname === "/";
 
-  const handleLogout = () => {
-    logout();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (e) {
+      console.warn("Logout failed:", e);
+    }
     setIsMenuOpen(false);
+    navigate("/", { replace: true });
   };
 
   const isActive = (path: string) => location.pathname === path;
@@ -109,14 +118,21 @@ export default function Navbar() {
               </Button>
             </Link>
             <ModeToggle />
-            {user ? (
+            {user && !isMarketingHome ? (
               <>
-                <Link to="/profile">
-                  <Button variant="outline" size="lg" className="rounded-full">
-                    <User className="h-5 w-5 mr-2" />
-                    Profile
-                  </Button>
-                </Link>
+                {/* Replace Profile with a role-aware Dashboard link for marketing/front pages */}
+                {(() => {
+                  const normalized = normalizeUserType((user as any)?.userType);
+                  const dashboardPath = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : "/";
+                  return (
+                    <Link to={dashboardPath}>
+                      <Button variant="outline" size="lg" className="rounded-full">
+                        <LayoutDashboard className="h-5 w-5 mr-2" />
+                        Dashboard
+                      </Button>
+                    </Link>
+                  );
+                })()}
                 <Button
                   variant="ghost"
                   size="lg"
@@ -219,12 +235,18 @@ export default function Navbar() {
               <div className="border-t border-white/15 pt-4 mt-2">
                 {user ? (
                   <div className="flex flex-col gap-2">
-                    <Link to="/profile" onClick={() => setIsMenuOpen(false)}>
-                      <Button variant="outline" className="w-full justify-start rounded-full">
-                        <User className="h-4 w-4 mr-2" />
-                        Profile
-                      </Button>
-                    </Link>
+                        {(() => {
+                          const normalized = normalizeUserType((user as any)?.userType);
+                          const dashboardPath = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : "/";
+                          return (
+                            <Link to={dashboardPath} onClick={() => setIsMenuOpen(false)}>
+                              <Button variant="outline" className="w-full justify-start rounded-full">
+                                <LayoutDashboard className="h-4 w-4 mr-2" />
+                                Dashboard
+                              </Button>
+                            </Link>
+                          );
+                        })()}
                     <Button
                       variant="ghost"
                       className="w-full justify-start rounded-full"

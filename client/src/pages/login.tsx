@@ -8,14 +8,9 @@ import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Eye, EyeOff } from "lucide-react";
+import { normalizeUserType } from "@/lib/utils";
+import { apiFetch } from "@/lib/api";
 
-interface User {
-  userType: "Professional" | "Employer";
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -30,7 +25,7 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
-      const redirect = user.userType === "Professional" ? "/employee/dashboard" : "/employer/dashboard";
+      const redirect = user.userType === "Professional" ? "/employee/home" : "/employer/home";
       navigate(redirect, { replace: true });
     }
   }, [user, navigate]);
@@ -49,27 +44,37 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const res = await apiFetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Login failed");
-      }
-
-      const data = await res.json();
-      // Use the existing auth API (setUser) instead of a non-existent `login`
-      if (typeof auth.setUser === "function") {
-        auth.setUser(data.user as User);
-      }
+      // Use auth.login which handles API call, state, and persistence
+      const logged = await auth.login(form.email, form.password);
 
       toast({ title: "Success", description: "Logged in successfully" });
 
-      const redirect = data.user?.userType === "Professional" ? "/employee/dashboard" : "/employer/dashboard";
-      navigate(redirect || "/", { replace: true });
+      // Prefer returned login value, then auth.user, then fetch /api/auth/me
+      let effectiveUser: any = logged ?? auth.user ?? null;
+
+      if (!effectiveUser) {
+        try {
+          const meRes = await apiFetch("/api/auth/me", { credentials: "include" });
+          const meData = await meRes.json().catch(() => ({}));
+          effectiveUser = meData?.user ?? meData ?? null;
+          if (effectiveUser && typeof auth?.setUser === "function") auth.setUser(effectiveUser);
+        } catch (meErr) {
+          console.debug("login: /api/auth/me fetch failed", meErr);
+        }
+      } else {
+        if (effectiveUser && typeof auth?.setUser === "function") auth.setUser(effectiveUser);
+      }
+
+      const normalized = normalizeUserType(effectiveUser?.userType || "");
+      const target = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : "/";
+
+      try { localStorage.setItem('skillconnect_user_v1', JSON.stringify(effectiveUser)); } catch {}
+      if (effectiveUser) {
+        if (typeof auth?.setUser === "function") auth.setUser(effectiveUser);
+        window.location.assign(target);
+      } else {
+        navigate(target, { replace: true });
+      }
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Invalid credentials", variant: "destructive" });
     } finally {

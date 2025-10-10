@@ -30,6 +30,14 @@ app.post("/api/auth/login", (req, res) => {
   return res.json({ ok: true, token, user: { email } });
 });
 
+app.post("/api/auth/register", (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ ok: false, error: "Missing email" });
+  // In dev, just echo the user back. Real registration is handled by server/storage in other files.
+  const token = Buffer.from(email).toString("base64");
+  return res.status(201).json({ ok: true, token, user: { email } });
+});
+
 app.get("/api/users", async (_req, res) => {
   try {
     const all = await db.select().from(users).limit(10);

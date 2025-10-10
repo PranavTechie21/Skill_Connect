@@ -8,16 +8,19 @@ import { Label } from "@/components/ui/label";
 import { useNavigate, Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../contexts/AuthContext";
-import { Eye, EyeOff, User as UserIcon, Building, Shield } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+import { normalizeUserType } from "@/lib/utils";
+import { Eye, EyeOff, User as UserIcon, Building } from "lucide-react";
 
-type Role = "admin" | "employee" | "employer";
+type Role = "employee" | "employer";
 
 interface RegisterPayload {
   email: string;
   password: string;
+  confirmPassword?: string;
   firstName: string;
   lastName: string;
-  userType: "Professional" | "Employer" | "Admin";
+  userType: "Professional" | "Employer";
   location?: string;
   title?: string;
   bio?: string;
@@ -57,11 +60,9 @@ export default function Signup() {
   // Redirect if already authenticated
   useEffect(() => {
     if (user) {
-      // map stored userType to route
       const ut = (user as any).userType;
-      if (ut === "Admin" || ut === "admin") navigate("/admin", { replace: true });
-      else if (ut === "Professional" || ut === "employee") navigate("/employee/dashboard", { replace: true });
-      else navigate("/employer/dashboard", { replace: true });
+      if (ut === "Professional" || ut === "employee") navigate("/employee/home", { replace: true });
+      else navigate("/employer/home", { replace: true });
     }
   }, [user, navigate]);
 
@@ -73,7 +74,6 @@ export default function Signup() {
   const update = (patch: Partial<typeof form>) => setForm(prev => ({ ...prev, ...patch }));
 
   const next = () => {
-    // keep the same validation as validateStep to avoid inconsistencies
     if (!validateStep(step)) return;
     setStep(s => Math.min(3, s + 1));
   };
@@ -83,51 +83,129 @@ export default function Signup() {
   // map local role to backend userType
   const mapUserType = (r: Role): RegisterPayload["userType"] => {
     if (r === "employee") return "Professional";
-    if (r === "employer") return "Employer";
-    return "Admin";
+    return "Employer";
   };
 
+  // --- validate step (trim email, basic email regex)
+  const validateStep = (s: number): boolean => {
+    if (s === 0) {
+      const email = form.email.trim();
+      const password = form.password;
+      const confirm = form.confirmPassword;
+
+      if (!email || !password) return false;
+      if (password.length < 6) return false;
+      if (password !== confirm) return false;
+
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) return false;
+
+      return true;
+    }
+    if (s === 1) {
+      return Boolean(form.firstName && form.lastName);
+    }
+    if (s === 2) return true;
+    return true;
+  };
+
+  const isNextDisabled = !validateStep(step);
+  const isCreateDisabled = loading || !validateStep(0) || !validateStep(1);
+
+  // --- handle submit (re-validate, prevent double submits, defensive JSON parsing)
   const handleSubmit = async () => {
+    if (loading) return;
+
+    if (!validateStep(0) || !validateStep(1)) {
+      toast({
+        title: "Invalid information",
+        description: "Please check your email, password and name before continuing.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const payload: RegisterPayload = {
-        email: form.email,
+        email: form.email.trim(),
         password: form.password,
-        firstName: form.firstName,
-        lastName: form.lastName,
+        confirmPassword: form.confirmPassword,
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
         userType: mapUserType(form.userType),
-        location: form.location || undefined,
-        title: form.title || undefined,
-        bio: form.bio || undefined,
+        location: form.location?.trim() || undefined,
+        title: form.title?.trim() || undefined,
+        bio: form.bio?.trim() || undefined,
         skills: form.skills ? form.skills.split(",").map(s => s.trim()).filter(Boolean) : []
       };
 
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        credentials: "include"
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || "Registration failed");
+      // Use AuthContext.register when available for consistent behavior
+      let createdUser: any = null;
+      if (auth && typeof auth.register === "function") {
+        try {
+          createdUser = await auth.register(payload);
+        } catch (e) {
+          // Let the outer catch handle toast/error
+          throw e;
+        }
+      } else {
+        // Fallback to raw fetch if AuthContext.register isn't available
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          credentials: "include"
+        });
+        let data: any = {};
+        try { data = await res.json(); } catch {}
+        if (!res.ok) {
+          const errMessage = data?.message || res.statusText || "Registration failed";
+          throw new Error(errMessage);
+        }
+        createdUser = data?.user ?? data;
+        // Try to set user in context if possible
+        if (createdUser && typeof auth?.setUser === "function") auth.setUser(createdUser);
       }
 
-      const data = await res.json();
+      console.debug("signup: createdUser", createdUser, "payloadUserType", payload.userType);
 
-      // if backend returns created user, set it in auth store
-      if (data?.user && typeof auth.setUser === "function") {
-        auth.setUser(data.user);
+  toast({ title: "Account created successfully", description: "Welcome to SkillConnect!", variant: "success" });
+
+      // Determine redirect based on a reliable user object.
+      // Prefer: createdUser (API response) -> auth.user (context) -> /api/auth/me (server) -> payload.userType
+      let effectiveUser: any = createdUser ?? auth?.user ?? null;
+
+      if (!effectiveUser) {
+        try {
+          const meRes = await apiFetch("/api/auth/me", { credentials: "include" });
+          const meData = await meRes.json().catch(() => ({}));
+          effectiveUser = meData?.user ?? meData ?? null;
+          if (effectiveUser && typeof auth?.setUser === "function") auth.setUser(effectiveUser);
+        } catch (meErr) {
+          console.debug("signup: /api/auth/me fetch failed", meErr);
+        }
+      } else {
+        // ensure context is updated when we have createdUser but auth may not yet reflect it
+        if (effectiveUser && typeof auth?.setUser === "function") auth.setUser(effectiveUser);
       }
 
-      toast({ title: "Account created successfully", description: "Welcome to SkillConnect!" });
+      const normalized = normalizeUserType(effectiveUser?.userType || payload.userType || "");
+      const target = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : normalizeUserType(payload.userType as any) === "professional" ? "/employee/home" : normalizeUserType(payload.userType as any) === "employer" ? "/employer/home" : "/";
 
-      // navigate to dashboard based on userType
-      const redirect = payload.userType === "Professional" ? "/employee/dashboard" : (payload.userType === "Employer" ? "/employer/dashboard" : "/admin");
-      navigate(redirect, { replace: true });
+      // Persist user to localStorage synchronously to ensure AuthProvider can pick it up on reload
+      try { localStorage.setItem('skillconnect_user_v1', JSON.stringify(effectiveUser)); } catch {}
+      if (effectiveUser) {
+        if (typeof auth?.setUser === "function") auth.setUser(effectiveUser);
+        // Force full navigation so the protected route sees the persisted user immediately
+        window.location.assign(target);
+      } else {
+        // last resort: client-side navigate (no user info available)
+        navigate(target, { replace: true });
+      }
 
     } catch (err: any) {
+      console.error("signup error", err);
       toast({ title: "Registration failed", description: err?.message || "Please try again", variant: "destructive" });
     } finally {
       setLoading(false);
@@ -136,8 +214,6 @@ export default function Signup() {
 
   const getUserTypeIcon = (type: Role) => {
     switch (type) {
-      case 'admin':
-        return <Shield className="h-5 w-5 text-red-600" />;
       case 'employee':
         return <UserIcon className="h-5 w-5 text-blue-600" />;
       case 'employer':
@@ -149,8 +225,6 @@ export default function Signup() {
 
   const getUserTypeDescription = (type: Role) => {
     switch (type) {
-      case 'admin':
-        return "Manage the platform and oversee all operations";
       case 'employee':
         return "Find jobs and build your professional profile";
       case 'employer':
@@ -160,33 +234,19 @@ export default function Signup() {
     }
   };
 
-  // Centralized step validation used both for disabling the button and preventing navigation
-  const validateStep = (s: number) => {
-    if (s === 0) {
-      if (!form.email || !form.password) return false;
-      if (form.password.length < 6) return false;
-      if (form.password !== form.confirmPassword) return false;
-      return true;
-    }
-    if (s === 1) {
-      return Boolean(form.firstName && form.lastName);
-    }
-    // step 2: allow continuing (optional fields)
-    if (s === 2) return true;
-    // step 3 is the final review step — no continuation from here
-    return true;
-  };
-
-  const isNextDisabled = !validateStep(step);
-
   if (!open) return null;
 
-  // create per-step content (keeps this component self-contained)
   const Step0 = (
     <div className="space-y-3">
       <div>
         <Label>Email</Label>
-        <Input value={form.email} onChange={e => update({ email: e.target.value })} type="email" placeholder="you@company.com" />
+        <Input
+          value={form.email}
+          onChange={e => update({ email: e.target.value })}
+          type="email"
+          placeholder="you@company.com"
+          autoComplete="email"
+        />
       </div>
 
       <div>
@@ -197,6 +257,7 @@ export default function Signup() {
             onChange={e => update({ password: e.target.value })}
             type={showPassword ? "text" : "password"}
             placeholder="At least 6 characters"
+            autoComplete="new-password"
           />
           <button
             type="button"
@@ -217,6 +278,7 @@ export default function Signup() {
             onChange={e => update({ confirmPassword: e.target.value })}
             type={showConfirmPassword ? "text" : "password"}
             placeholder="Repeat your password"
+            autoComplete="new-password"
           />
           <button
             type="button"
@@ -236,31 +298,40 @@ export default function Signup() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <Label>First name</Label>
-          <Input value={form.firstName} onChange={e => update({ firstName: e.target.value })} placeholder="John" />
+          <Input value={form.firstName} onChange={e => update({ firstName: e.target.value })} placeholder="John" autoComplete="given-name" />
         </div>
         <div>
           <Label>Last name</Label>
-          <Input value={form.lastName} onChange={e => update({ lastName: e.target.value })} placeholder="Doe" />
+          <Input value={form.lastName} onChange={e => update({ lastName: e.target.value })} placeholder="Doe" autoComplete="family-name" />
         </div>
       </div>
 
       <div>
         <Label>I'm signing up as</Label>
-        <div className="flex gap-2 mt-2">
-          {(["employee", "employer", "admin"] as Role[]).map(r => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => update({ userType: r })}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${form.userType === r ? "border-blue-600 bg-blue-50" : "border-gray-200"}`}
-            >
-              {getUserTypeIcon(r)}
-              <div className="text-left">
-                <div className="text-sm font-medium">{r === 'employee' ? 'Professional' : r === 'employer' ? 'Employer' : 'Admin'}</div>
-                <div className="text-xs opacity-80">{getUserTypeDescription(r)}</div>
-              </div>
-            </button>
-          ))}
+        <div className="flex gap-2 mt-2" role="radiogroup" aria-label="User type">
+          {(["employee", "employer"] as Role[]).map(r => {
+            const active = form.userType === r;
+            return (
+              <button
+                key={r}
+                type="button"
+                onClick={() => update({ userType: r })}
+                role="radio"
+                aria-checked={active}
+                aria-pressed={active}
+                aria-label={r === 'employee' ? 'Professional' : 'Employer'}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 ${
+                  active ? "border-blue-600 bg-blue-50 ring-blue-300" : "border-gray-200"
+                }`}
+              >
+                {getUserTypeIcon(r)}
+                <div className="text-left">
+                  <div className="text-sm font-medium">{r === 'employee' ? 'Professional' : 'Employer'}</div>
+                  <div className="text-xs opacity-80">{getUserTypeDescription(r)}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -382,7 +453,7 @@ export default function Signup() {
                     </Button>
                   )}
                   {step === 3 && (
-                    <Button onClick={handleSubmit} disabled={loading}>
+                    <Button onClick={handleSubmit} disabled={isCreateDisabled}>
                       {loading ? "Creating..." : "Create account"}
                     </Button>
                   )}

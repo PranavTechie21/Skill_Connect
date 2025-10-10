@@ -1,104 +1,214 @@
-﻿import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { API_BASE_URL, apiFetch } from '../lib/api';
+﻿import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { apiFetch, API_BASE_URL } from "../lib/api";
+
+/**
+ * Improved AuthContext
+ * - Persists user to localStorage
+ * - Defensive JSON parsing
+ * - credentials: "include" by default for cookie-based sessions
+ * - isLoading properly set during async ops
+ * - Cancels stale checkAuth requests on unmount
+ */
 
 interface User {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  userType: 'Professional' | 'Employer' | 'admin';
+  id?: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  userType?: "Professional" | "Employer" | "admin" | string;
 }
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (userData: any) => Promise<void>;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<User>;
+  register: (userData: any) => Promise<User>;
+  logout: () => Promise<void>;
+  setUser: (u: User | null) => void; // exposed for components that need to set user manually
   isLoading: boolean;
 }
+
+const STORAGE_KEY = "skillconnect_user_v1";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUserState] = useState<User | null>(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as User) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    // Persist changes to localStorage
+    try {
+      if (user) localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+      else localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore storage errors
+    }
+  }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const controller = new AbortController();
+
     const checkAuth = async () => {
+      setIsLoading(true);
       try {
-        const response = await apiFetch('/api/auth/me');
-        if (response.ok) {
-          const data = await response.json();
-          setUser(data.user);
+        // apiFetch is expected to be a thin wrapper around fetch
+        const res = await apiFetch("/api/auth/me", { signal: controller.signal, credentials: "include" });
+        // Defensive parse
+        let data: any = {};
+        try { data = await res.json(); } catch { data = {}; }
+
+        if (!res.ok) {
+          // not authenticated or error — ensure user cleared
+          if (!cancelled) setUserState(null);
+          return;
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
+
+        if (!cancelled) {
+          // backend might return { user } or user object directly; handle both
+          const returnedUser: User | null = data?.user ?? data ?? null;
+          setUserState(returnedUser);
+        }
+      } catch (err: any) {
+        if (err.name === "AbortError") {
+          // ignore abort
+        } else {
+          console.error("Auth check failed:", err);
+          if (!cancelled) setUserState(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
 
     checkAuth();
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+    // empty deps: run once on mount
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await apiFetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
+  const setUser = (u: User | null) => setUserState(u);
 
-    if (!response.ok) {
-      throw new Error('Login failed');
+  const login = async (email: string, password: string): Promise<User> => {
+    setIsLoading(true);
+    try {
+      const res = await apiFetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+        credentials: "include"
+      });
+
+      let data: any = {};
+      try { data = await res.json(); } catch { data = {}; }
+
+      if (!res.ok) {
+        const msg = data?.message || data?.error || res.statusText || "Login failed";
+        throw new Error(msg);
+      }
+
+      const returnedUser: User = data?.user ?? data;
+      setUserState(returnedUser);
+      return returnedUser;
+    } finally {
+      setIsLoading(false);
     }
-
-    const data = await response.json();
-    setUser(data.user);
   };
 
-  const register = async (userData: any) => {
-    const response = await apiFetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData),
-    });
+  const register = async (userData: any): Promise<User> => {
+    setIsLoading(true);
+    try {
+      // First try a relative fetch so the dev server's proxy (Vite) forwards to backend.
+      // If that fails (dev proxy not available or network resolution issue),
+      // fall back to the explicit API_BASE_URL.
+      let res: Response | null = null;
+      try {
+        res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(userData),
+          credentials: "include"
+        });
+      } catch (err) {
+        // network-level failure for relative url; try direct backend URL if configured
+        if (API_BASE_URL) {
+          try {
+            res = await fetch(`${API_BASE_URL}/api/auth/register`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(userData),
+              credentials: "include"
+            });
+          } catch (err2) {
+            // rethrow original error to be handled by caller
+            throw err2;
+          }
+        } else {
+          throw err;
+        }
+      }
 
-    if (!response.ok) {
-      throw new Error('Registration failed');
+      let data: any = {};
+      try { data = await res.json(); } catch { data = {}; }
+
+      if (!res || !res.ok) {
+        const msg = data?.message || data?.error || (res ? res.statusText : "Network error") || "Registration failed";
+        throw new Error(msg);
+      }
+
+      const returnedUser: User = data?.user ?? data;
+      setUserState(returnedUser);
+      return returnedUser;
+    } finally {
+      setIsLoading(false);
     }
-
-    const data = await response.json();
-    setUser(data.user);
   };
 
-  const logout = async () => {
-    await apiFetch('/api/auth/logout', {
-      method: 'POST',
-    });
-    setUser(null);
+  const logout = async (): Promise<void> => {
+    setIsLoading(true);
+    try {
+      // Best-effort: call backend logout, ignore network errors but clear local state
+      try {
+        await apiFetch("/api/auth/logout", {
+          method: "POST",
+          credentials: "include"
+        });
+      } catch (e) {
+        console.warn("Logout endpoint failed or unreachable:", e);
+      }
+      setUserState(null);
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const value = {
+  const value: AuthContextType = {
     user,
     login,
     register,
     logout,
+    setUser,
     isLoading
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
 };
 
 export default AuthContext;

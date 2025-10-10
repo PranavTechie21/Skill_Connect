@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth"; // Add this import
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function SubmitStory() {
   const { user } = useAuth();

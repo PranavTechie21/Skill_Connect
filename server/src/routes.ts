@@ -4,6 +4,7 @@ import session from "express-session";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { storage } from "./storage";
+import { registerSchema } from "../../shared/schema";
 
 declare module 'express-session' {
   interface SessionData {
@@ -15,19 +16,6 @@ declare module 'express-session' {
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
-});
-
-const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
-  firstName: z.string().min(1),
-  lastName: z.string().min(1),
-  userType: z.enum(['Professional', 'Employer']),
-  location: z.string().optional(),
-  title: z.string().optional(),
-  bio: z.string().optional(),
-  skills: z.array(z.string()).optional(),
-  profilePhoto: z.string().optional(),
 });
 
 const updateUserSchema = z.object({
@@ -654,4 +642,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-export default registerRoutes
+export default registerRoutes;

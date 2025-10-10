@@ -140,7 +140,7 @@ export const registerSchema = z.object({
   password: z.string().min(6),
   firstName: z.string(),
   lastName: z.string(),
-  userType: z.string(),
+  userType: z.enum(["Professional", "Employer"]),
   location: z.string().optional(),
   profilePhoto: z.string().optional(),
   title: z.string().optional(),

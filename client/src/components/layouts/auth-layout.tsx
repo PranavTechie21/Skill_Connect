@@ -1,6 +1,7 @@
 import { Navigate, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { normalizeUserType } from '@/lib/utils';
 
 interface AuthLayoutProps {
   userType: 'Professional' | 'Employer';
@@ -13,8 +14,17 @@ export default function AuthLayout({ userType }: AuthLayoutProps) {
     return <Navigate to="/login" replace />;
   }
 
+  const normalized = normalizeUserType(user?.userType || '');
+
   if (user.userType !== userType) {
-    return <Navigate to={`/${user.userType.toLowerCase()}/dashboard`} replace />;
+    const redirectTo =
+      normalized === 'professional'
+        ? '/employee/home'
+        : normalized === 'employer'
+        ? '/employer/home'
+        : '/';
+
+    return <Navigate to={redirectTo} replace />;
   }
 
   return (
@@ -30,16 +40,16 @@ export default function AuthLayout({ userType }: AuthLayoutProps) {
                 </Link>
               </div>
 
-              {user.userType === 'Professional' ? (
+              {normalized === 'professional' ? (
                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                  <Link to="/employee/dashboard" className="nav-link">Dashboard</Link>
+                  <Link to="/employee/home" className="nav-link">Dashboard</Link>
                   <Link to="/employee/applications" className="nav-link">Applications</Link>
                   <Link to="/employee/jobs" className="nav-link">Find Jobs</Link>
                   <Link to="/employee/profile" className="nav-link">Profile</Link>
                 </div>
               ) : (
                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                  <Link to="/employer/dashboard" className="nav-link">Dashboard</Link>
+                  <Link to="/employer/home" className="nav-link">Dashboard</Link>
                   <Link to="/employer/jobs" className="nav-link">Manage Jobs</Link>
                   <Link to="/employer/candidates" className="nav-link">Candidates</Link>
                   <Link to="/employer/profile" className="nav-link">Company Profile</Link>

@@ -1,6 +1,7 @@
 // API configuration
 // FIX: Changed default port from 5001 to 5000 to match the running backend server.
-export const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+// In development, default to localhost:5000 so Vite proxy issues or missing env don't block requests
+export const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.MODE === 'development' ? 'http://localhost:5000' : '');
 
 export const apiFetch = (url: string, options?: RequestInit) => {
   const fullUrl = url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
