@@ -18,6 +18,7 @@ export const users = pgTable("users", {
   bio: text("bio"),
   skills: json("skills").$type<string[]>(),
   profilePhoto: text("profile_photo"),
+  telephoneNumber: text("telephone_number"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

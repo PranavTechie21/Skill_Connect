@@ -18,7 +18,7 @@ export default function EmployeeLayout({ children }: { children: React.ReactNode
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <aside className="col-span-1 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm">
             <nav className="space-y-2">
-              <Link to="/employee/home" className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Overview</Link>
+              <Link to="/employee/dashboard" className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Overview</Link>
               <Link to="/applications" className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Applications</Link>
               <Link to="/jobs" className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Browse Jobs</Link>
               <Link to="/profile" className="block px-3 py-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700">Profile</Link>

@@ -5,7 +5,7 @@ import db from "./db";
 import { users } from "./schema";
 
 const app = express();
-const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
+const PORT = process.env.PORT ? Number(process.env.PORT) : 5001;
 
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
@@ -26,16 +26,20 @@ app.get("/api/ping", (_req, res) => res.json({ ok: true, now: Date.now() }));
 app.post("/api/auth/login", (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ ok: false, error: "Missing email" });
-  const token = Buffer.from(email).toString("base64");
-  return res.json({ ok: true, token, user: { email } });
+  const userType = req.body.userType || undefined;
+  const user = userType ? { email, userType } : { email };
+  const token = Buffer.from(JSON.stringify(user)).toString("base64");
+  return res.json({ ok: true, token, user });
 });
 
 app.post("/api/auth/register", (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ ok: false, error: "Missing email" });
-  // In dev, just echo the user back. Real registration is handled by server/storage in other files.
-  const token = Buffer.from(email).toString("base64");
-  return res.status(201).json({ ok: true, token, user: { email } });
+  // In dev, just echo the user back. Include provided userType so the client can route properly.
+  const userType = req.body.userType || undefined;
+  const user = userType ? { email, userType } : { email };
+  const token = Buffer.from(JSON.stringify(user)).toString("base64");
+  return res.status(201).json({ ok: true, token, user });
 });
 
 app.get("/api/users", async (_req, res) => {
@@ -51,8 +55,17 @@ app.get("/api/auth/me", (req, res) => {
   if (!auth || !auth.startsWith("Bearer ")) return res.status(401).json({ ok: false });
   const token = auth.slice(7);
   try {
-    const email = Buffer.from(token, "base64").toString("utf8");
-    return res.json({ ok: true, user: { email } });
+    const decoded = Buffer.from(token, "base64").toString("utf8");
+    // token may be plain email or JSON stringified user
+    try {
+      const parsed = JSON.parse(decoded);
+      const user = parsed && typeof parsed === 'object' ? parsed : { email: String(parsed) };
+      return res.json({ ok: true, user });
+    } catch (e) {
+      // not JSON, fallback to email
+      const email = decoded;
+      return res.json({ ok: true, user: { email } });
+    }
   } catch (err) {
     return res.status(401).json({ ok: false });
   }

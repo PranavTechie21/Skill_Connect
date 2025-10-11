@@ -25,6 +25,10 @@ interface RegisterPayload {
   title?: string;
   bio?: string;
   skills?: string[];
+  companyName?: string;
+  companyWebsite?: string;
+  companyBio?: string;
+  telephoneNumber?: string;
 }
 
 export default function Signup() {
@@ -48,7 +52,11 @@ export default function Signup() {
     location: "",
     title: "",
     bio: "",
-    skills: ""
+    skills: "",
+    companyName: "",
+    companyWebsite: "",
+    companyBio: "",
+    telephoneNumber: "",
   });
 
   useEffect(() => {
@@ -61,8 +69,10 @@ export default function Signup() {
   useEffect(() => {
     if (user) {
       const ut = (user as any).userType;
-      if (ut === "Professional" || ut === "employee") navigate("/employee/home", { replace: true });
-      else navigate("/employer/home", { replace: true });
+      const normalized = normalizeUserType(ut as string);
+  if (normalized === "professional") navigate("/employee/dashboard", { replace: true });
+  else if (normalized === "employer") navigate("/employer/dashboard", { replace: true });
+      else navigate("/", { replace: true });
     }
   }, [user, navigate]);
 
@@ -105,21 +115,27 @@ export default function Signup() {
     if (s === 1) {
       return Boolean(form.firstName && form.lastName);
     }
-    if (s === 2) return true;
+    if (s === 2) {
+      if (form.userType === 'employer') {
+        const phoneRegex = /^\d{10}$/;
+        return Boolean(form.companyName && form.location && form.telephoneNumber && phoneRegex.test(form.telephoneNumber));
+      }
+      return true;
+    }
     return true;
   };
 
   const isNextDisabled = !validateStep(step);
-  const isCreateDisabled = loading || !validateStep(0) || !validateStep(1);
+  const isCreateDisabled = loading || !validateStep(0) || !validateStep(1) || !validateStep(2);
 
   // --- handle submit (re-validate, prevent double submits, defensive JSON parsing)
   const handleSubmit = async () => {
     if (loading) return;
 
-    if (!validateStep(0) || !validateStep(1)) {
+    if (!validateStep(0) || !validateStep(1) || !validateStep(2)) {
       toast({
         title: "Invalid information",
-        description: "Please check your email, password and name before continuing.",
+        description: "Please fill all the required fields before continuing.",
         variant: "destructive"
       });
       return;
@@ -137,7 +153,11 @@ export default function Signup() {
         location: form.location?.trim() || undefined,
         title: form.title?.trim() || undefined,
         bio: form.bio?.trim() || undefined,
-        skills: form.skills ? form.skills.split(",").map(s => s.trim()).filter(Boolean) : []
+        skills: form.skills ? form.skills.split(",").map(s => s.trim()).filter(Boolean) : [],
+        companyName: form.companyName?.trim() || undefined,
+        companyWebsite: form.companyWebsite?.trim() || undefined,
+        companyBio: form.companyBio?.trim() || undefined,
+        telephoneNumber: form.telephoneNumber?.trim() || undefined,
       };
 
       // Use AuthContext.register when available for consistent behavior
@@ -189,19 +209,20 @@ export default function Signup() {
         // ensure context is updated when we have createdUser but auth may not yet reflect it
         if (effectiveUser && typeof auth?.setUser === "function") auth.setUser(effectiveUser);
       }
+      // persist token if provided by API response
+      try { if ((createdUser as any)?.token) localStorage.setItem('skillconnect_token_v1', (createdUser as any).token); } catch {}
 
-      const normalized = normalizeUserType(effectiveUser?.userType || payload.userType || "");
-      const target = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : normalizeUserType(payload.userType as any) === "professional" ? "/employee/home" : normalizeUserType(payload.userType as any) === "employer" ? "/employer/home" : "/";
-
-      // Persist user to localStorage synchronously to ensure AuthProvider can pick it up on reload
-      try { localStorage.setItem('skillconnect_user_v1', JSON.stringify(effectiveUser)); } catch {}
       if (effectiveUser) {
         if (typeof auth?.setUser === "function") auth.setUser(effectiveUser);
-        // Force full navigation so the protected route sees the persisted user immediately
-        window.location.assign(target);
-      } else {
-        // last resort: client-side navigate (no user info available)
+        const normalized = normalizeUserType(effectiveUser?.userType || payload.userType || "");
+        const target = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
+        
+        // Use navigate instead of window.location.assign to allow AuthContext to propagate state
+        // without a hard reload, which fixes the race condition.
         navigate(target, { replace: true });
+      } else {
+        // Fallback if user object is not available after signup
+        navigate("/login", { replace: true });
       }
 
     } catch (err: any) {
@@ -320,14 +341,19 @@ export default function Signup() {
                 aria-checked={active}
                 aria-pressed={active}
                 aria-label={r === 'employee' ? 'Professional' : 'Employer'}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 ${
-                  active ? "border-blue-600 bg-blue-50 ring-blue-300" : "border-gray-200"
-                }`}
+                className={
+                  `flex items-center gap-2 px-3 py-2 rounded-lg border focus:outline-none focus:ring-2 transition-colors ` +
+                  (active
+                    ? `border-blue-600 bg-blue-50 text-gray-900 ring-blue-300 dark:bg-blue-900 dark:border-blue-400 dark:text-white`
+                    : `border-gray-200 text-gray-800 dark:border-gray-700 dark:text-gray-200 bg-transparent dark:bg-transparent`)
+                }
               >
                 {getUserTypeIcon(r)}
                 <div className="text-left">
-                  <div className="text-sm font-medium">{r === 'employee' ? 'Professional' : 'Employer'}</div>
-                  <div className="text-xs opacity-80">{getUserTypeDescription(r)}</div>
+                  <div className={`text-sm font-medium ${active ? 'text-gray-900 dark:text-white' : 'text-gray-900 dark:text-gray-100'}`}>
+                    {r === 'employee' ? 'Professional' : 'Employer'}
+                  </div>
+                  <div className="text-xs opacity-80 dark:opacity-80 text-gray-600 dark:text-gray-300">{getUserTypeDescription(r)}</div>
                 </div>
               </button>
             );
@@ -337,7 +363,7 @@ export default function Signup() {
     </div>
   );
 
-  const Step2 = (
+  const Step2Employee = (
     <div className="space-y-3">
       <div>
         <Label>Location</Label>
@@ -361,6 +387,40 @@ export default function Signup() {
     </div>
   );
 
+  const Step2Employer = (
+    <div className="space-y-3">
+      <div>
+        <Label>Company Name</Label>
+        <Input value={form.companyName} onChange={e => update({ companyName: e.target.value })} placeholder="Tech Corp" required />
+      </div>
+
+      <div>
+        <Label>Location</Label>
+        <Input value={form.location} onChange={e => update({ location: e.target.value })} placeholder="City, Country" required />
+      </div>
+
+      <div>
+        <Label>Telephone Number</Label>
+        <Input value={form.telephoneNumber} onChange={e => {
+          const { value } = e.target;
+          if (/^\d*$/.test(value)) {
+            update({ telephoneNumber: value });
+          }
+        }} placeholder="+1 234 567 890" type="tel" required maxLength={10} />
+      </div>
+
+      <div>
+        <Label>Company Website (Optional)</Label>
+        <Input value={form.companyWebsite} onChange={e => update({ companyWebsite: e.target.value })} placeholder="https://example.com" />
+      </div>
+
+      <div>
+        <Label>Company Bio</Label>
+        <Textarea value={form.companyBio} onChange={e => update({ companyBio: e.target.value })} placeholder="Brief description of your company" />
+      </div>
+    </div>
+  );
+
   const Step3 = (
     <div className="space-y-3">
       <h3 className="text-lg font-semibold">Review your information</h3>
@@ -377,18 +437,41 @@ export default function Signup() {
           <Label>User type</Label>
           <div className="mt-1">{mapUserType(form.userType)}</div>
         </div>
-        <div>
-          <Label>Location</Label>
-          <div className="mt-1">{form.location || '—'}</div>
-        </div>
-        <div>
-          <Label>Title</Label>
-          <div className="mt-1">{form.title || '—'}</div>
-        </div>
-        <div>
-          <Label>Skills</Label>
-          <div className="mt-1">{form.skills || '—'}</div>
-        </div>
+        {form.userType === 'employee' ? (
+          <>
+            <div>
+              <Label>Location</Label>
+              <div className="mt-1">{form.location || '—'}</div>
+            </div>
+            <div>
+              <Label>Title</Label>
+              <div className="mt-1">{form.title || '—'}</div>
+            </div>
+            <div>
+              <Label>Skills</Label>
+              <div className="mt-1">{form.skills || '—'}</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <Label>Company Name</Label>
+              <div className="mt-1">{form.companyName || '—'}</div>
+            </div>
+            <div>
+              <Label>Location</Label>
+              <div className="mt-1">{form.location || '—'}</div>
+            </div>
+            <div>
+              <Label>Telephone Number</Label>
+              <div className="mt-1">{form.telephoneNumber || '—'}</div>
+            </div>
+            <div>
+              <Label>Company Website</Label>
+              <div className="mt-1">{form.companyWebsite || '—'}</div>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="text-sm text-muted-foreground mt-2">
@@ -397,10 +480,10 @@ export default function Signup() {
     </div>
   );
 
-  const steps = [Step0, Step1, Step2, Step3];
+  const steps = [Step0, Step1, form.userType === 'employee' ? Step2Employee : Step2Employer, Step3];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
@@ -408,7 +491,7 @@ export default function Signup() {
         transition={{ duration: 0.24 }}
         className="relative z-10 w-full max-w-4xl mx-auto"
       >
-        <Card className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+  <Card className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
           <div className="flex flex-col lg:flex-row">
             <div className="hidden lg:flex lg:w-1/3 items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 p-10">
               <div className="text-center text-white max-w-xs">
@@ -457,6 +540,7 @@ export default function Signup() {
                       {loading ? "Creating..." : "Create account"}
                     </Button>
                   )}
+                    
                 </div>
               </div>
 

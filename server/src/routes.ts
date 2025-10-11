@@ -104,6 +104,10 @@ const handleError = (res: any, error: any, defaultMessage: string) => {
   if (error instanceof z.ZodError) {
     return res.status(400).json({ message: "Validation error", errors: error.issues });
   }
+  // In development, include error.message to aid debugging. In production, keep generic message.
+  if (process.env.NODE_ENV === 'development') {
+    return res.status(500).json({ message: `${defaultMessage}: ${error?.message || String(error)}` });
+  }
   res.status(500).json({ message: defaultMessage });
 };
 
@@ -131,18 +135,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const hashedPassword = await bcrypt.hash(data.password, 10);
-      const user = await storage.createUser({
-        email: data.email,
-        userType: data.userType,
-        password: hashedPassword,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        location: data.location,
-        title: data.title,
-        bio: data.bio,
-        skills: data.skills || [],
-        profilePhoto: data.profilePhoto,
-      });
+      let user;
+      try {
+        // Defensive normalization: ensure userType matches DB enum and skills is an array
+        let normalizedUserType = data.userType;
+        if (typeof normalizedUserType === 'string') {
+          const s = normalizedUserType.toLowerCase();
+          if (s.includes('pro')) normalizedUserType = 'Professional';
+          else if (s.includes('employ')) normalizedUserType = 'Employer';
+        }
+
+        let skillsArr: string[] = [];
+        if (Array.isArray(data.skills)) skillsArr = data.skills as string[];
+        else if (typeof data.skills === 'string') skillsArr = data.skills.split(',').map((s: string) => s.trim()).filter(Boolean);
+
+        // Build insert object only with expected columns (server schema)
+        const insertPayload: any = {
+          email: data.email,
+          userType: normalizedUserType,
+          password: hashedPassword,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          location: data.location,
+          title: data.title,
+          bio: data.bio,
+          skills: skillsArr,
+          profilePhoto: data.profilePhoto,
+          telephoneNumber: data.telephoneNumber,
+        };
+
+        user = await storage.createUser(insertPayload);
+
+        if (normalizedUserType === 'Employer') {
+          await storage.createCompany({
+            name: data.companyName || `${data.firstName}'s Company`,
+            description: data.companyBio,
+            website: data.companyWebsite,
+            ownerId: user.id,
+          });
+        }
+
+      } catch (dbErr) {
+        console.error('DB createUser error:', dbErr);
+        return handleError(res, dbErr, 'Registration failed');
+      }
       
       req.session.userId = user.id.toString();
       res.json({ user: sanitizeUser(user) });

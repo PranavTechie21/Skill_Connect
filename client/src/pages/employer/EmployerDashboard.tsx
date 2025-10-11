@@ -1,38 +1,24 @@
-// employer/dashboard.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from 'react';
 import {
-  Search,
-  MapPin,
-  Users,
-  Calendar,
-  Mail,
-  MoreVertical,
-  Eye,
-  FileText,
-  TrendingUp,
-  Briefcase,
-  CheckCircle,
-  XCircle,
-  Clock,
-  Filter,
-  Plus,
-  MessageSquare,
-  BarChart3,
-  Download,
-  Settings,
-  Bell,
-} from "lucide-react";
+  Briefcase, Users, TrendingUp, Clock, Search, Plus, MoreVertical, 
+  MapPin, DollarSign, Calendar, Eye, Mail, MessageSquare, Bell, 
+  Settings, LogOut, Moon, Sun, Menu, X, Home, FileText, BarChart3,
+  User, Star, Filter, ChevronDown, Edit, Pause, Play, Trash2, Copy,
+  CheckCircle, XCircle, AlertCircle, ArrowRight, Target, Award, Zap
+} from 'lucide-react';
 
-// Types
 interface Job {
   id: string;
   title: string;
   department: string;
   location: string;
+  type: string;
+  salary: string;
   postedDate: string;
-  applicationCount: number;
+  applications: number;
   newApplications: number;
-  status: "active" | "paused" | "closed" | "draft";
+  status: 'active' | 'paused' | 'closed';
+  views: number;
 }
 
 interface Application {
@@ -42,632 +28,688 @@ interface Application {
   jobTitle: string;
   appliedDate: string;
   matchScore: number;
+  status: 'new' | 'reviewing' | 'shortlisted' | 'interview' | 'rejected';
   skills: string[];
-  matchedSkills: string[];
-  status: "new" | "reviewing" | "shortlisted" | "interview" | "rejected";
 }
 
-interface Candidate {
-  id: string;
-  name: string;
-  headline: string;
-  location: string;
-  photo?: string;
-  skills: string[];
-  matchPercentage: number;
-  experience: string;
-}
+const mockJobs: Job[] = [
+  {
+    id: '1',
+    title: 'Senior Frontend Developer',
+    department: 'Engineering',
+    location: 'San Francisco, CA',
+    type: 'Full-time',
+    salary: '$120k - $150k',
+    postedDate: '2024-01-15',
+    applications: 45,
+    newApplications: 12,
+    status: 'active',
+    views: 234
+  },
+  {
+    id: '2',
+    title: 'Product Designer',
+    department: 'Design',
+    location: 'Remote',
+    type: 'Full-time',
+    salary: '$90k - $120k',
+    postedDate: '2024-01-10',
+    applications: 67,
+    newApplications: 8,
+    status: 'active',
+    views: 189
+  },
+  {
+    id: '3',
+    title: 'Marketing Manager',
+    department: 'Marketing',
+    location: 'New York, NY',
+    type: 'Full-time',
+    salary: '$80k - $100k',
+    postedDate: '2024-01-05',
+    applications: 32,
+    newApplications: 0,
+    status: 'paused',
+    views: 156
+  }
+];
 
-interface Stats {
-  activeJobs: number;
-  totalApplications: number;
-  shortlistedCandidates: number;
-  positionsFilled: number;
-}
+const mockApplications: Application[] = [
+  {
+    id: '1',
+    candidateName: 'Sarah Johnson',
+    jobTitle: 'Senior Frontend Developer',
+    appliedDate: '2024-01-20',
+    matchScore: 95,
+    status: 'shortlisted',
+    skills: ['React', 'TypeScript', 'Node.js']
+  },
+  {
+    id: '2',
+    candidateName: 'Michael Chen',
+    jobTitle: 'Product Designer',
+    appliedDate: '2024-01-19',
+    matchScore: 88,
+    status: 'new',
+    skills: ['Figma', 'UI/UX', 'Prototyping']
+  },
+  {
+    id: '3',
+    candidateName: 'Emily Rodriguez',
+    jobTitle: 'Senior Frontend Developer',
+    appliedDate: '2024-01-18',
+    matchScore: 92,
+    status: 'interview',
+    skills: ['React', 'Redux', 'GraphQL']
+  }
+];
 
 const EmployerDashboard: React.FC = () => {
-  const [company, setCompany] = useState<any>(null);
-  const [activeJobs, setActiveJobs] = useState<Job[]>([]);
-  const [recentApplications, setRecentApplications] = useState<Application[]>(
-    []
-  );
-  const [shortlistedCandidates, setShortlistedCandidates] = useState<
-    Candidate[]
-  >([]);
-  const [stats, setStats] = useState<Stats>({
-    activeJobs: 0,
-    totalApplications: 0,
-    shortlistedCandidates: 0,
-    positionsFilled: 0,
-  });
-  const [loading, setLoading] = useState(true);
-  const [jobFilter, setJobFilter] = useState<
-    "all" | "active" | "paused" | "closed"
-  >("all");
+  const [darkMode, setDarkMode] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [jobs] = useState<Job[]>(mockJobs);
+  const [applications] = useState<Application[]>(mockApplications);
 
-  useEffect(() => {
-    fetchEmployerDashboard();
-  }, []);
-
-  const fetchEmployerDashboard = async () => {
-    // Mock data - replace with actual API calls
-    setTimeout(() => {
-      setCompany({
-        name: "TechCorp Inc.",
-        industry: "Technology",
-        size: "100-500 employees",
-      });
-
-      setActiveJobs([
-        {
-          id: "1",
-          title: "Senior Frontend Developer",
-          department: "Engineering",
-          location: "San Francisco, CA",
-          postedDate: "2024-01-10",
-          applicationCount: 45,
-          newApplications: 3,
-          status: "active",
-        },
-        {
-          id: "2",
-          title: "Product Manager",
-          department: "Product",
-          location: "Remote",
-          postedDate: "2024-01-08",
-          applicationCount: 28,
-          newApplications: 0,
-          status: "active",
-        },
-        {
-          id: "3",
-          title: "UX Designer",
-          department: "Design",
-          location: "New York, NY",
-          postedDate: "2024-01-05",
-          applicationCount: 32,
-          newApplications: 5,
-          status: "paused",
-        },
-      ]);
-
-      setRecentApplications([
-        {
-          id: "1",
-          candidateName: "Sarah Johnson",
-          jobTitle: "Senior Frontend Developer",
-          appliedDate: "2 hours ago",
-          matchScore: 92,
-          skills: ["React", "TypeScript", "Node.js", "AWS", "TailwindCSS"],
-          matchedSkills: ["React", "TypeScript", "TailwindCSS"],
-          status: "new",
-        },
-        {
-          id: "2",
-          candidateName: "Michael Chen",
-          jobTitle: "Product Manager",
-          appliedDate: "5 hours ago",
-          matchScore: 88,
-          skills: ["Product Strategy", "Agile", "JIRA", "Figma", "SQL"],
-          matchedSkills: ["Product Strategy", "Agile", "Figma"],
-          status: "reviewing",
-        },
-        {
-          id: "3",
-          candidateName: "Emily Davis",
-          jobTitle: "UX Designer",
-          appliedDate: "1 day ago",
-          matchScore: 95,
-          skills: [
-            "Figma",
-            "Sketch",
-            "User Research",
-            "Prototyping",
-            "UI Design",
-          ],
-          matchedSkills: ["Figma", "User Research", "Prototyping", "UI Design"],
-          status: "shortlisted",
-        },
-      ]);
-
-      setShortlistedCandidates([
-        {
-          id: "1",
-          name: "Alex Rodriguez",
-          headline: "Senior Full Stack Developer",
-          location: "Austin, TX",
-          skills: ["React", "Node.js", "Python", "AWS", "MongoDB"],
-          matchPercentage: 94,
-          experience: "5+ years",
-        },
-        {
-          id: "2",
-          name: "Jessica Williams",
-          headline: "Product Designer",
-          location: "Remote",
-          skills: ["Figma", "UI/UX", "Design Systems", "User Research"],
-          matchPercentage: 89,
-          experience: "4+ years",
-        },
-      ]);
-
-      setStats({
-        activeJobs: 8,
-        totalApplications: 156,
-        shortlistedCandidates: 23,
-        positionsFilled: 3,
-      });
-
-      setLoading(false);
-    }, 1500);
+  const company = {
+    name: 'TechCorp Inc.',
+    logo: 'TC',
+    plan: 'Professional'
   };
 
-  const handleStatusChange = async (
-    applicationId: string,
-    newStatus: string
-  ) => {
-    // Update application status
-    console.log(`Updating application ${applicationId} to ${newStatus}`);
-    // API call would go here
+  const stats = {
+    activeJobs: 8,
+    totalApplications: 234,
+    shortlisted: 45,
+    interviewed: 12
   };
 
-  const handleJobAction = async (jobId: string, action: string) => {
-    // Handle job actions
-    console.log(`Job ${jobId} - Action: ${action}`);
-    // API call would go here
-  };
-
-  const JobPostingCard: React.FC<{ job: Job }> = ({ job }) => {
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case "active":
-          return "bg-green-100 text-green-800";
-        case "paused":
-          return "bg-yellow-100 text-yellow-800";
-        case "closed":
-          return "bg-gray-100 text-gray-800";
-        case "draft":
-          return "bg-blue-100 text-blue-800";
-        default:
-          return "bg-gray-100 text-gray-800";
-      }
+  const getStatusColor = (status: string) => {
+    const colors = {
+      active: darkMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      paused: darkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200',
+      closed: darkMode ? 'bg-gray-500/20 text-gray-400 border-gray-500/30' : 'bg-gray-50 text-gray-700 border-gray-200',
+      new: darkMode ? 'bg-blue-500/20 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-700 border-blue-200',
+      reviewing: darkMode ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-purple-50 text-purple-700 border-purple-200',
+      shortlisted: darkMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      interview: darkMode ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-700 border-indigo-200',
+      rejected: darkMode ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-rose-50 text-rose-700 border-rose-200'
     };
-
-    return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-all duration-200">
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1">
-            <h3 className="text-xl font-semibold text-gray-900">{job.title}</h3>
-            <p className="text-sm text-gray-600 mt-1">{job.department}</p>
-            <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-              <span className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                {job.location}
-              </span>
-              <span className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                Posted {job.postedDate}
-              </span>
-            </div>
-          </div>
-
-          <div className="relative">
-            <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <MoreVertical className="w-5 h-5 text-gray-400" />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-gray-400" />
-              <span className="text-sm">
-                <span className="font-semibold text-gray-900">
-                  {job.applicationCount}
-                </span>
-                <span className="text-gray-600"> applications</span>
-              </span>
-            </div>
-            {job.newApplications > 0 && (
-              <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-1 rounded-full">
-                {job.newApplications} new
-              </span>
-            )}
-          </div>
-
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-              job.status
-            )}`}
-          >
-            {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-          </span>
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <button
-            onClick={() => handleJobAction(job.id, "viewApplications")}
-            className="w-full py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-          >
-            View All Applications →
-          </button>
-        </div>
-      </div>
-    );
+    return colors[status as keyof typeof colors] || colors.active;
   };
 
-  const ApplicationCard: React.FC<{ application: Application }> = ({
-    application,
-  }) => (
-    <div className="bg-white rounded-lg border border-gray-200 p-4 hover:border-blue-300 transition-all duration-200">
-      <div className="flex items-start gap-4">
-        <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-          {application.candidateName
-            .split(" ")
-            .map((n) => n[0])
-            .join("")}
-        </div>
-
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start mb-2">
-            <div>
-              <h4 className="font-semibold text-gray-900">
-                {application.candidateName}
-              </h4>
-              <p className="text-sm text-gray-600">{application.jobTitle}</p>
-            </div>
-            <span className="bg-green-100 text-green-800 text-xs font-medium px-2 py-1 rounded">
-              {application.matchScore}% match
-            </span>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {application.skills.slice(0, 4).map((skill) => (
-              <span
-                key={skill}
-                className={`text-xs px-2 py-1 rounded ${application.matchedSkills.includes(skill)
-                    ? "bg-blue-100 text-blue-800 font-medium"
-                    : "bg-gray-100 text-gray-700"
-                  }`}
-              >
-                {skill}
-              </span>
-            ))}
-            {application.skills.length > 4 && (
-              <span className="text-xs text-gray-500">
-                +{application.skills.length - 4} more
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-500">
-              Applied {application.appliedDate}
-            </span>
-
-            <div className="flex items-center gap-2">
-              <select
-                value={application.status}
-                onChange={(e) =>
-                  handleStatusChange(application.id, e.target.value)
-                }
-                className="text-xs border border-gray-300 rounded px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="new">New</option>
-                <option value="reviewing">Reviewing</option>
-                <option value="shortlisted">Shortlisted</option>
-                <option value="interview">Interview</option>
-                <option value="rejected">Rejected</option>
-              </select>
-
-              <button className="p-1.5 hover:bg-gray-100 rounded transition-colors">
-                <Mail className="w-4 h-4 text-gray-600" />
-              </button>
-              <button className="p-1.5 hover:bg-gray-100 rounded transition-colors">
-                <Eye className="w-4 h-4 text-gray-600" />
-              </button>
-            </div>
-          </div>
-        </div>
+  const NavItem = ({ icon: Icon, label, id, badge }: any) => (
+    <button
+      onClick={() => setActiveTab(id)}
+      className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
+        activeTab === id
+          ? darkMode
+            ? 'bg-blue-500/20 text-blue-400'
+            : 'bg-blue-50 text-blue-700'
+          : darkMode
+          ? 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <Icon className="w-5 h-5" />
+        <span className="font-medium">{label}</span>
       </div>
-    </div>
-  );
-
-  const CandidateCard: React.FC<{ candidate: Candidate }> = ({ candidate }) => (
-    <div className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-all duration-200">
-      <div className="flex items-start gap-4 mb-4">
-        <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-          {candidate.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")}
-        </div>
-        <div className="flex-1">
-          <h4 className="font-semibold text-gray-900 text-lg">
-            {candidate.name}
-          </h4>
-          <p className="text-gray-600 text-sm">{candidate.headline}</p>
-          <div className="flex items-center gap-1 mt-1 text-sm text-gray-500">
-            <MapPin className="w-4 h-4" />
-            {candidate.location}
-          </div>
-        </div>
-        <span className="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
-          {candidate.matchPercentage}% match
+      {badge && (
+        <span className={`px-2 py-1 rounded-full text-xs font-bold ${
+          darkMode ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white'
+        }`}>
+          {badge}
         </span>
-      </div>
-
-      <div className="flex flex-wrap gap-2 mb-4">
-        {candidate.skills.map((skill) => (
-          <span
-            key={skill}
-            className="bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full"
-          >
-            {skill}
-          </span>
-        ))}
-      </div>
-
-      <div className="flex items-center justify-between text-sm text-gray-600 mb-4">
-        <span>Experience: {candidate.experience}</span>
-      </div>
-
-      <div className="flex gap-2">
-        <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm">
-          View Profile
-        </button>
-        <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium text-sm">
-          Message
-        </button>
-      </div>
-    </div>
+      )}
+    </button>
   );
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                Welcome back, {company?.name}!
-              </h1>
-              <p className="text-gray-600">Manage your hiring pipeline</p>
-            </div>
+    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'} transition-colors duration-300`}>
+      {/* Top Navbar */}
+      <nav className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b sticky top-0 z-50 backdrop-blur-lg bg-opacity-80`}>
+        <div className="px-6 py-4">
+          <div className="flex items-center justify-between">
+            {/* Left side */}
             <div className="flex items-center gap-4">
-              <button className="relative p-2 text-gray-600 hover:text-gray-900">
-                <Bell className="w-6 h-6" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className={`p-2 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+              >
+                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </button>
+              
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+                  {company.logo}
+                </div>
+                <div>
+                  <h1 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {company.name}
+                  </h1>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                    {company.plan} Plan
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right side */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-2.5 rounded-xl ${darkMode ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} transition-all`}
+              >
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+
+              <button className="relative p-2.5 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl transition-all">
+                <Bell className="w-5 h-5" />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              </button>
+
+              <button className="relative p-2.5 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl transition-all">
+                <MessageSquare className="w-5 h-5" />
+                <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
                   3
                 </span>
               </button>
-              <button className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium flex items-center gap-2">
+
+              <div className="relative group">
+                <button className="flex items-center gap-2 p-2 pr-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all">
+                  <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold">
+                    A
+                  </div>
+                  <ChevronDown className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+                </button>
+
+                <div className={`absolute right-0 mt-2 w-56 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-xl border py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all`}>
+                  <div className={`px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Admin User</p>
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>admin@techcorp.com</p>
+                  </div>
+                  <button className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                    <User className="w-4 h-4" />
+                    Company Profile
+                  </button>
+                  <button className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                    <Settings className="w-4 h-4" />
+                    Settings
+                  </button>
+                  <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'} mt-2 pt-2`}>
+                    <button className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                      <LogOut className="w-4 h-4" />
+                      Logout
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      <div className="flex">
+        {/* Sidebar */}
+        <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} ${darkMode ? 'bg-gray-800' : 'bg-white'} border-r ${darkMode ? 'border-gray-700' : 'border-gray-200'} transition-all duration-300 overflow-hidden`}>
+          <div className="p-6 space-y-6">
+            {/* Quick Stats */}
+            <div>
+              <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Quick Stats
+              </h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-blue-50'}`}>
+                  <Briefcase className={`w-5 h-5 mb-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.activeJobs}</p>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Active Jobs</p>
+                </div>
+                <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-purple-50'}`}>
+                  <Users className={`w-5 h-5 mb-1 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.totalApplications}</p>
+                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Applications</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation */}
+            <div>
+              <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Navigation
+              </h3>
+              <div className="space-y-1">
+                <NavItem icon={Home} label="Overview" id="overview" />
+                <NavItem icon={Briefcase} label="Job Postings" id="jobs" badge={stats.activeJobs} />
+                <NavItem icon={Users} label="Applications" id="applications" badge="12" />
+                <NavItem icon={Star} label="Candidates" id="candidates" />
+                <NavItem icon={MessageSquare} label="Messages" id="messages" badge="3" />
+                <NavItem icon={BarChart3} label="Analytics" id="analytics" />
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div>
+              <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                Quick Actions
+              </h3>
+              <button className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-lg">
                 <Plus className="w-5 h-5" />
                 Post New Job
               </button>
             </div>
           </div>
-        </div>
-      </header>
+        </aside>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Active Jobs</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.activeJobs}
-                </p>
+        {/* Main Content */}
+        <main className="flex-1 p-8 overflow-auto">
+          <div className="max-w-7xl mx-auto space-y-8">
+            {/* Header */}
+            <div>
+              <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                Dashboard Overview
+              </h1>
+              <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
+                Manage your job postings and track applications
+              </p>
+            </div>
+
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border p-6 hover:shadow-xl transition-all group`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                    <Briefcase className="w-6 h-6 text-white" />
+                  </div>
+                  <Zap className="w-5 h-5 text-blue-500" />
+                </div>
+                <p className={`text-sm font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Active Jobs</p>
+                <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.activeJobs}</p>
+                <p className="text-xs text-emerald-600 font-semibold mt-2">↑ 12% this month</p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Briefcase className="w-6 h-6 text-blue-600" />
+
+              <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border p-6 hover:shadow-xl transition-all group`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <Target className="w-5 h-5 text-purple-500" />
+                </div>
+                <p className={`text-sm font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Applications</p>
+                <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.totalApplications}</p>
+                <p className="text-xs text-blue-600 font-semibold mt-2">45 this week</p>
+              </div>
+
+              <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border p-6 hover:shadow-xl transition-all group`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                    <Star className="w-6 h-6 text-white" />
+                  </div>
+                  <Award className="w-5 h-5 text-emerald-500" />
+                </div>
+                <p className={`text-sm font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Shortlisted</p>
+                <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.shortlisted}</p>
+                <p className="text-xs text-emerald-600 font-semibold mt-2">8 ready to interview</p>
+              </div>
+
+              <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border p-6 hover:shadow-xl transition-all group`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-3 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                    <TrendingUp className="w-6 h-6 text-white" />
+                  </div>
+                  <CheckCircle className="w-5 h-5 text-amber-500" />
+                </div>
+                <p className={`text-sm font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Interviewed</p>
+                <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.interviewed}</p>
+                <p className="text-xs text-amber-600 font-semibold mt-2">3 offers pending</p>
               </div>
             </div>
-          </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Total Applications
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.totalApplications}
-                </p>
-              </div>
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Users className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Active Jobs */}
+              <div className="lg:col-span-2">
+                <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border p-6`}>
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 ${darkMode ? 'bg-blue-500/20' : 'bg-blue-100'} rounded-lg`}>
+                        <Briefcase className={`w-5 h-5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                      </div>
+                      <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Active Job Postings</h2>
+                    </div>
+                    <button className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-2 group">
+                      View All
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Shortlisted</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.shortlistedCandidates}
-                </p>
-              </div>
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
+                  <div className="space-y-4">
+                    {jobs.map(job => (
+                      <div
+                        key={job.id}
+                        className={`${darkMode ? 'bg-gray-700/50 border-gray-600' : 'bg-gray-50 border-gray-200'} border rounded-xl p-5 hover:shadow-lg transition-all group`}
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className={`text-lg font-bold ${darkMode ? 'text-white group-hover:text-blue-400' : 'text-gray-900 group-hover:text-blue-600'} transition-colors`}>
+                                {job.title}
+                              </h3>
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getStatusColor(job.status)}`}>
+                                {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+                              </span>
+                            </div>
+                            <div className={`flex items-center gap-4 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                              <span className="flex items-center gap-1.5">
+                                <MapPin className="w-4 h-4" />
+                                {job.location}
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <DollarSign className="w-4 h-4" />
+                                {job.salary}
+                              </span>
+                              <span className="flex items-center gap-1.5">
+                                <Calendar className="w-4 h-4" />
+                                {job.postedDate}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="relative group/menu">
+                            <button className={`p-2 ${darkMode ? 'hover:bg-gray-600' : 'hover:bg-gray-200'} rounded-lg transition-colors`}>
+                              <MoreVertical className="w-5 h-5" />
+                            </button>
+                            <div className={`absolute right-0 mt-2 w-48 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-xl border py-2 opacity-0 invisible group-hover/menu:opacity-100 group-hover/menu:visible transition-all z-10`}>
+                              <button className={`w-full px-4 py-2 text-left flex items-center gap-3 text-sm ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                <Eye className="w-4 h-4" />
+                                View Details
+                              </button>
+                              <button className={`w-full px-4 py-2 text-left flex items-center gap-3 text-sm ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                <Edit className="w-4 h-4" />
+                                Edit Job
+                              </button>
+                              <button className={`w-full px-4 py-2 text-left flex items-center gap-3 text-sm ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                {job.status === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                                {job.status === 'active' ? 'Pause' : 'Resume'} Job
+                              </button>
+                              <button className={`w-full px-4 py-2 text-left flex items-center gap-3 text-sm ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                                <Copy className="w-4 h-4" />
+                                Duplicate
+                              </button>
+                              <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'} my-2`}></div>
+                              <button className={`w-full px-4 py-2 text-left flex items-center gap-3 text-sm ${darkMode ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                                <Trash2 className="w-4 h-4" />
+                                Delete Job
+                              </button>
+                            </div>
+                          </div>
+                        </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">
-                  Positions Filled
-                </p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats.positionsFilled}
-                </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2">
+                              <Users className={`w-5 h-5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                              <span className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                                <span className="font-semibold">{job.applications}</span> applications
+                              </span>
+                            </div>
+                            {job.newApplications > 0 && (
+                              <span className="bg-blue-100 dark:bg-blue-500/20 text-blue-800 dark:text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-full">
+                                {job.newApplications} new
+                              </span>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <Eye className={`w-5 h-5 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                              <span className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                                {job.views} views
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-medium text-sm flex items-center gap-2">
+                            View Applications
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <div className="p-3 bg-indigo-100 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-indigo-600" />
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Active Job Postings */}
-            <section className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Active Job Postings
-                </h2>
-                <div className="flex items-center gap-4">
-                  <select
-                    value={jobFilter}
-                    onChange={(e) => setJobFilter(e.target.value as any)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">All Jobs</option>
-                    <option value="active">Active</option>
-                    <option value="paused">Paused</option>
-                    <option value="closed">Closed</option>
-                  </select>
-                  <button className="text-blue-600 hover:text-blue-700 font-medium text-sm">
-                    View All Jobs →
+              {/* Sidebar - Recent Applications & Quick Actions */}
+              <div className="space-y-6">
+                {/* Recent Applications */}
+                <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border p-6`}>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className={`p-2 ${darkMode ? 'bg-purple-500/20' : 'bg-purple-100'} rounded-lg`}>
+                      <Users className={`w-5 h-5 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                    </div>
+                    <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Recent Applications</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    {applications.map(app => (
+                      <div
+                        key={app.id}
+                        className={`${darkMode ? 'bg-gray-700/50 border-gray-600 hover:bg-gray-700' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'} border rounded-xl p-4 transition-all cursor-pointer group`}
+                      >
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg flex-shrink-0">
+                            {app.candidateName.split(' ').map(n => n[0]).join('')}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className={`font-bold ${darkMode ? 'text-white group-hover:text-blue-400' : 'text-gray-900 group-hover:text-blue-600'} transition-colors truncate`}>
+                              {app.candidateName}
+                            </h4>
+                            <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'} truncate`}>{app.jobTitle}</p>
+                          </div>
+                          <div className={`text-xs font-bold px-2 py-1 rounded-lg ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-700'}`}>
+                            {app.matchScore}%
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {app.skills.slice(0, 2).map(skill => (
+                            <span
+                              key={skill}
+                              className={`text-xs px-2 py-1 rounded-md ${darkMode ? 'bg-gray-600 text-gray-300' : 'bg-white text-gray-700'}`}
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {app.skills.length > 2 && (
+                            <span className={`text-xs px-2 py-1 rounded-md ${darkMode ? 'bg-gray-600 text-gray-400' : 'bg-white text-gray-500'}`}>
+                              +{app.skills.length - 2}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${getStatusColor(app.status)}`}>
+                            {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                          </span>
+                          <button className="text-blue-600 hover:text-blue-700 text-xs font-semibold flex items-center gap-1">
+                            View
+                            <ArrowRight className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <button className={`w-full mt-4 py-2.5 ${darkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'} rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2`}>
+                    View All Applications
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Hiring Pipeline */}
+                <div className={`${darkMode ? 'bg-gradient-to-br from-indigo-600 to-purple-600' : 'bg-gradient-to-br from-indigo-500 to-purple-600'} rounded-2xl p-6 text-white`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Target className="w-5 h-5" />
+                    <h3 className="text-lg font-bold">Hiring Pipeline</h3>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white/90">New Applications</span>
+                      <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">24</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white/90">Under Review</span>
+                      <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">18</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white/90">Shortlisted</span>
+                      <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">12</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white/90">Interview</span>
+                      <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">8</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-white/90">Offer Extended</span>
+                      <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-lg font-bold text-sm">3</span>
+                    </div>
+                  </div>
+
+                  <button className="w-full mt-4 py-2.5 bg-white text-indigo-600 rounded-xl font-semibold text-sm hover:bg-white/90 transition-all flex items-center justify-center gap-2">
+                    View Pipeline
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Quick Stats */}
+                <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border p-6`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className={`p-2 ${darkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'} rounded-lg`}>
+                      <BarChart3 className={`w-5 h-5 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                    </div>
+                    <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>This Week</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className={`p-4 rounded-xl ${darkMode ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-emerald-50 border-emerald-200'} border`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-sm font-medium ${darkMode ? 'text-emerald-400' : 'text-emerald-700'}`}>Applications Received</span>
+                        <CheckCircle className={`w-4 h-4 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                      </div>
+                      <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>45</p>
+                      <p className={`text-xs ${darkMode ? 'text-emerald-400' : 'text-emerald-600'} font-semibold mt-1`}>↑ 23% vs last week</p>
+                    </div>
+
+                    <div className={`p-4 rounded-xl ${darkMode ? 'bg-blue-500/10 border-blue-500/20' : 'bg-blue-50 border-blue-200'} border`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-sm font-medium ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}>Interviews Scheduled</span>
+                        <Calendar className={`w-4 h-4 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                      </div>
+                      <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>8</p>
+                      <p className={`text-xs ${darkMode ? 'text-blue-400' : 'text-blue-600'} font-semibold mt-1`}>3 today, 5 upcoming</p>
+                    </div>
+
+                    <div className={`p-4 rounded-xl ${darkMode ? 'bg-amber-500/10 border-amber-500/20' : 'bg-amber-50 border-amber-200'} border`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={`text-sm font-medium ${darkMode ? 'text-amber-400' : 'text-amber-700'}`}>Avg. Time to Hire</span>
+                        <Clock className={`w-4 h-4 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+                      </div>
+                      <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>18 days</p>
+                      <p className={`text-xs ${darkMode ? 'text-amber-400' : 'text-amber-600'} font-semibold mt-1`}>↓ 3 days improvement</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Premium Tip */}
+                <div className={`${darkMode ? 'bg-gradient-to-br from-rose-600 to-pink-600' : 'bg-gradient-to-br from-rose-500 to-pink-600'} rounded-2xl p-6 text-white`}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="p-2 bg-white/20 rounded-lg">
+                      <Zap className="w-5 h-5" />
+                    </div>
+                    <h3 className="text-lg font-bold">Pro Tip</h3>
+                  </div>
+                  <p className="text-sm text-white/90 mb-4">
+                    Jobs with detailed descriptions get <span className="font-bold">2.5x more</span> quality applications!
+                  </p>
+                  <button className="w-full py-2.5 bg-white text-rose-600 rounded-xl font-semibold text-sm hover:bg-white/90 transition-all flex items-center justify-center gap-2">
+                    Improve Job Posts
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 gap-6">
-                {activeJobs.map((job) => (
-                  <JobPostingCard key={job.id} job={job} />
-                ))}
-              </div>
-            </section>
+            </div>
 
-            {/* Recent Applications */}
-            <section className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">
-                  Recent Applications
-                </h2>
-                <button className="text-blue-600 hover:text-blue-700 font-medium text-sm">
-                  View All Applications →
-                </button>
+            {/* Recent Activity Timeline */}
+            <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-2xl border p-6`}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className={`p-2 ${darkMode ? 'bg-amber-500/20' : 'bg-amber-100'} rounded-lg`}>
+                  <Clock className={`w-5 h-5 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+                </div>
+                <h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Recent Activity</h2>
               </div>
+
               <div className="space-y-4">
-                {recentApplications.map((application) => (
-                  <ApplicationCard
-                    key={application.id}
-                    application={application}
-                  />
-                ))}
-              </div>
-            </section>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Quick Actions */}
-            <section className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Quick Actions
-              </h3>
-              <div className="space-y-3">
-                <button className="w-full flex items-center gap-3 p-3 text-left bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors">
-                  <Plus className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-blue-700">
-                    Post a New Job
-                  </span>
-                </button>
-                <button className="w-full flex items-center gap-3 p-3 text-left bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
-                  <Search className="w-5 h-5 text-gray-600" />
-                  <span className="font-medium text-gray-700">
-                    Search Candidates
-                  </span>
-                </button>
-                <button className="w-full flex items-center gap-3 p-3 text-left bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
-                  <Calendar className="w-5 h-5 text-gray-600" />
-                  <span className="font-medium text-gray-700">
-                    Schedule Interviews
-                  </span>
-                </button>
-                <button className="w-full flex items-center gap-3 p-3 text-left bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors">
-                  <BarChart3 className="w-5 h-5 text-gray-600" />
-                  <span className="font-medium text-gray-700">
-                    View Analytics
-                  </span>
-                </button>
-              </div>
-            </section>
-
-            {/* Shortlisted Candidates */}
-            <section className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">
-                  Shortlisted Candidates
-                </h3>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                  View All
-                </button>
-              </div>
-              <div className="space-y-4">
-                {shortlistedCandidates.map((candidate) => (
-                  <CandidateCard key={candidate.id} candidate={candidate} />
-                ))}
-              </div>
-            </section>
-
-            {/* Hiring Pipeline Overview */}
-            <section className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                Hiring Pipeline
-              </h3>
-              <div className="space-y-3">
-                {[
-                  {
-                    stage: "New Applications",
-                    count: 12,
-                    color: "bg-blue-500",
-                  },
-                  { stage: "Under Review", count: 8, color: "bg-yellow-500" },
-                  { stage: "Shortlisted", count: 5, color: "bg-purple-500" },
-                  { stage: "Interview", count: 3, color: "bg-green-500" },
-                  { stage: "Offer Extended", count: 1, color: "bg-indigo-500" },
-                  { stage: "Hired", count: 2, color: "bg-teal-500" },
-                ].map((item, index) => (
-                  <div
-                    key={item.stage}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-3 h-3 rounded-full ${item.color}`}
-                      ></div>
-                      <span className="text-sm text-gray-700">
-                        {item.stage}
-                      </span>
-                    </div>
-                    <span className="text-sm font-semibold text-gray-900">
-                      {item.count}
-                    </span>
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-blue-500/20' : 'bg-blue-100'}`}>
+                    <Users className={`w-5 h-5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                   </div>
-                ))}
+                  <div className="flex-1">
+                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      New application received
+                    </p>
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Sarah Johnson applied for Senior Frontend Developer
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'} mt-1`}>2 minutes ago</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'}`}>
+                    <CheckCircle className={`w-5 h-5 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Interview scheduled
+                    </p>
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Michael Chen - Product Designer position
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'} mt-1`}>1 hour ago</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-purple-500/20' : 'bg-purple-100'}`}>
+                    <Star className={`w-5 h-5 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Candidate shortlisted
+                    </p>
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Emily Rodriguez added to shortlist
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'} mt-1`}>3 hours ago</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${darkMode ? 'bg-indigo-500/20' : 'bg-indigo-100'}`}>
+                    <Briefcase className={`w-5 h-5 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                  </div>
+                  <div className="flex-1">
+                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                      Job posting published
+                    </p>
+                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      Senior Frontend Developer is now live
+                    </p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'} mt-1`}>2 days ago</p>
+                  </div>
+                </div>
               </div>
-            </section>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );

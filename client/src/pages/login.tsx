@@ -25,8 +25,9 @@ export default function Login() {
 
   useEffect(() => {
     if (user) {
-      const redirect = user.userType === "Professional" ? "/employee/home" : "/employer/home";
-      navigate(redirect, { replace: true });
+      const normalized = normalizeUserType(user.userType || "");
+      const target = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
+      navigate(target, { replace: true });
     }
   }, [user, navigate]);
 
@@ -49,8 +50,11 @@ export default function Login() {
 
       toast({ title: "Success", description: "Logged in successfully" });
 
-      // Prefer returned login value, then auth.user, then fetch /api/auth/me
-      let effectiveUser: any = logged ?? auth.user ?? null;
+  // persist token if provided by login response
+  try { if ((logged as any)?.token) localStorage.setItem('skillconnect_token_v1', (logged as any).token); } catch {}
+
+  // Prefer returned login value, then auth.user, then fetch /api/auth/me
+  let effectiveUser: any = logged ?? auth.user ?? null;
 
       if (!effectiveUser) {
         try {
@@ -65,15 +69,16 @@ export default function Login() {
         if (effectiveUser && typeof auth?.setUser === "function") auth.setUser(effectiveUser);
       }
 
-      const normalized = normalizeUserType(effectiveUser?.userType || "");
-      const target = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : "/";
-
-      try { localStorage.setItem('skillconnect_user_v1', JSON.stringify(effectiveUser)); } catch {}
       if (effectiveUser) {
         if (typeof auth?.setUser === "function") auth.setUser(effectiveUser);
-        window.location.assign(target);
-      } else {
+        if (!effectiveUser.userType) {
+          toast({ title: "Login Successful", description: "User role not found. Redirecting to homepage.", variant: "destructive" });
+        }
+        const normalized = normalizeUserType(effectiveUser?.userType || "");
+        const target = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
         navigate(target, { replace: true });
+      } else {
+        navigate("/", { replace: true });
       }
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Invalid credentials", variant: "destructive" });
@@ -85,7 +90,7 @@ export default function Login() {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
       <motion.div initial={{ opacity: 0, scale: 0.98, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ duration: 0.28 }} className="relative z-10 w-full max-w-3xl mx-auto">
         <Card className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">

@@ -19,9 +19,9 @@ export default function AuthLayout({ userType }: AuthLayoutProps) {
   if (user.userType !== userType) {
     const redirectTo =
       normalized === 'professional'
-        ? '/employee/home'
+        ? '/employee/dashboard'
         : normalized === 'employer'
-        ? '/employer/home'
+        ? '/employer/dashboard'
         : '/';
 
     return <Navigate to={redirectTo} replace />;
@@ -42,14 +42,14 @@ export default function AuthLayout({ userType }: AuthLayoutProps) {
 
               {normalized === 'professional' ? (
                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                  <Link to="/employee/home" className="nav-link">Dashboard</Link>
+                  <Link to="/employee/dashboard" className="nav-link">Dashboard</Link>
                   <Link to="/employee/applications" className="nav-link">Applications</Link>
                   <Link to="/employee/jobs" className="nav-link">Find Jobs</Link>
                   <Link to="/employee/profile" className="nav-link">Profile</Link>
                 </div>
               ) : (
                 <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                  <Link to="/employer/home" className="nav-link">Dashboard</Link>
+                  <Link to="/employer/dashboard" className="nav-link">Dashboard</Link>
                   <Link to="/employer/jobs" className="nav-link">Manage Jobs</Link>
                   <Link to="/employer/candidates" className="nav-link">Candidates</Link>
                   <Link to="/employer/profile" className="nav-link">Company Profile</Link>

@@ -84,7 +84,7 @@ export default function Navbar() {
               </Link>
             )}
             {user?.userType === "Employer" && (
-              <Link to="/employer">
+              <Link to="/employer/dashboard">
                 <Button
                   variant={isActive("/employer") ? "default" : "ghost"}
                   className="rounded-full px-6 py-2 text-lg"
@@ -123,7 +123,7 @@ export default function Navbar() {
                 {/* Replace Profile with a role-aware Dashboard link for marketing/front pages */}
                 {(() => {
                   const normalized = normalizeUserType((user as any)?.userType);
-                  const dashboardPath = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : "/";
+                  const dashboardPath = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
                   return (
                     <Link to={dashboardPath}>
                       <Button variant="outline" size="lg" className="rounded-full">
@@ -194,7 +194,7 @@ export default function Navbar() {
                 </Link>
               )}
               {user?.userType === "Employer" && (
-                <Link to="/employer" onClick={() => setIsMenuOpen(false)}>
+                <Link to="/employer/dashboard" onClick={() => setIsMenuOpen(false)}>
                   <Button
                     variant={isActive("/employer") ? "default" : "ghost"}
                     className="w-full justify-start rounded-full"
@@ -237,7 +237,7 @@ export default function Navbar() {
                   <div className="flex flex-col gap-2">
                         {(() => {
                           const normalized = normalizeUserType((user as any)?.userType);
-                          const dashboardPath = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : "/";
+                          const dashboardPath = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
                           return (
                             <Link to={dashboardPath} onClick={() => setIsMenuOpen(false)}>
                               <Button variant="outline" className="w-full justify-start rounded-full">

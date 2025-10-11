@@ -12,8 +12,8 @@ import Admin from "./pages/admin";
 import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Dashboards from "./pages/dashboards";
-import EmployeeHome from "./pages/employee-home";
-import EmployerHome from "./pages/employer-home";
+import EmployeeDashboard from "./pages/employee/dashboard";
+import EmployerDashboard from "./pages/employer/dashboard";
 import Applications from "./pages/applications";
 import { AuthProvider } from "./contexts/AuthContext";
 import SubmitStory from "./pages/submit-story";
@@ -46,30 +46,28 @@ export default function App() {
               <Route path="/submit-story" element={<SubmitStory />} />
 
               {/* Employee & Employer - protected dashboard routes */}
-              <Route path="/employee/dashboard" element={<Navigate to="/employee/home" replace />} />
               <Route
-                path="/employee/home"
+                path="/employee/dashboard"
                 element={
                   <ProtectedRoute allowedUserTypes={["Professional"]}>
                     <EmployeeLayout>
-                      <EmployeeHome />
+                      <EmployeeDashboard />
                     </EmployeeLayout>
                   </ProtectedRoute>
                 }
               />
-              <Route path="/employer/dashboard" element={<Navigate to="/employer/home" replace />} />
               <Route
-                path="/employer/home"
+                path="/employer/dashboard"
                 element={
                   <ProtectedRoute allowedUserTypes={["Employer"]}>
-                    <EmployerHome />
+                    <EmployerDashboard />
                   </ProtectedRoute>
                 }
               />
 
               {/* Helpful redirects so shallow paths don't 404 */}
-              <Route path="/employee" element={<Navigate to="/employee/home" replace />} />
-              <Route path="/employer" element={<Navigate to="/employer/home" replace />} />
+              <Route path="/employee" element={<Navigate to="/employee/dashboard" replace />} />
+              <Route path="/employer" element={<Navigate to="/employer/dashboard" replace />} />
 
               {/* 404 */}
               <Route path="/404" element={<NotFound />} />

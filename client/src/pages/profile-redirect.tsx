@@ -9,8 +9,8 @@ export default function ProfileRedirect() {
 
   useEffect(() => {
     const normalized = normalizeUserType((user as any)?.userType);
-    if (normalized === "professional") navigate("/employee/home", { replace: true });
-    else if (normalized === "employer") navigate("/employer/home", { replace: true });
+  if (normalized === "professional") navigate("/employee/dashboard", { replace: true });
+  else if (normalized === "employer") navigate("/employer/dashboard", { replace: true });
     else navigate("/", { replace: true });
   }, [user, navigate]);
 

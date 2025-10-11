@@ -29,7 +29,7 @@ export const ProtectedRoute: React.FC<Props> = ({ children, allowedUserTypes }) 
       console.debug("ProtectedRoute: access denied", { userType: ut, normalized, allowed: allowedNormalized });
       // If the user is authenticated but not authorized for this route,
       // redirect them to their appropriate dashboard instead of a 404.
-  const redirectTo = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : "/";
+  const redirectTo = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
       return <Navigate to={redirectTo} replace />;
     }
   }

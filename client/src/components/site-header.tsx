@@ -32,7 +32,7 @@ export function SiteHeader() {
               {/* On the marketing site we don't show a profile icon — show role-aware Dashboard instead */}
               {(() => {
                 const normalized = normalizeUserType((user as any)?.userType);
-                const dashboardPath = normalized === "professional" ? "/employee/home" : normalized === "employer" ? "/employer/home" : "/";
+                const dashboardPath = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
                 return (
                   <Link
                     to={dashboardPath}
