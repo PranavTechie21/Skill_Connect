@@ -26,11 +26,11 @@ export default function Messages() {
   const queryClient = useQueryClient();
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
 
-  const form = useForm<MessageData>({
+  const form = useForm<z.infer<typeof messageSchema>>({
     resolver: zodResolver(messageSchema),
     defaultValues: {
-      receiverId: "",
-      applicationId: "",
+      receiverId: 0,
+      applicationId: 0,
       content: "",
       isRead: false,
     },
@@ -85,7 +85,7 @@ export default function Messages() {
     if (selectedConversation) {
       sendMessageMutation.mutate({
         ...data,
-        receiverId: selectedConversation,
+        receiverId: parseInt(selectedConversation),
       });
     }
   };

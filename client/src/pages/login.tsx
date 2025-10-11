@@ -26,7 +26,7 @@ export default function Login() {
   useEffect(() => {
     if (user) {
       const normalized = normalizeUserType(user.userType || "");
-      const target = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
+      const target = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : normalized === "admin" ? "/admin" : "/";
       navigate(target, { replace: true });
     }
   }, [user, navigate]);
@@ -45,41 +45,9 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Use auth.login which handles API call, state, and persistence
-      const logged = await auth.login(form.email, form.password);
-
+      await auth.login(form.email, form.password);
       toast({ title: "Success", description: "Logged in successfully" });
-
-  // persist token if provided by login response
-  try { if ((logged as any)?.token) localStorage.setItem('skillconnect_token_v1', (logged as any).token); } catch {}
-
-  // Prefer returned login value, then auth.user, then fetch /api/auth/me
-  let effectiveUser: any = logged ?? auth.user ?? null;
-
-      if (!effectiveUser) {
-        try {
-          const meRes = await apiFetch("/api/auth/me", { credentials: "include" });
-          const meData = await meRes.json().catch(() => ({}));
-          effectiveUser = meData?.user ?? meData ?? null;
-          if (effectiveUser && typeof auth?.setUser === "function") auth.setUser(effectiveUser);
-        } catch (meErr) {
-          console.debug("login: /api/auth/me fetch failed", meErr);
-        }
-      } else {
-        if (effectiveUser && typeof auth?.setUser === "function") auth.setUser(effectiveUser);
-      }
-
-      if (effectiveUser) {
-        if (typeof auth?.setUser === "function") auth.setUser(effectiveUser);
-        if (!effectiveUser.userType) {
-          toast({ title: "Login Successful", description: "User role not found. Redirecting to homepage.", variant: "destructive" });
-        }
-        const normalized = normalizeUserType(effectiveUser?.userType || "");
-        const target = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
-        navigate(target, { replace: true });
-      } else {
-        navigate("/", { replace: true });
-      }
+      // The useEffect hook will handle redirection once the user state is updated.
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Invalid credentials", variant: "destructive" });
     } finally {

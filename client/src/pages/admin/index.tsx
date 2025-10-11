@@ -1,5 +1,5 @@
 import { Routes, Route } from 'react-router-dom';
-import AdminDashboard from './dashboard';
+import AdminDashboard from './dashboard.tsx';
 import UserManagement from './user-management';
 import JobManagement from './job-management';
 import CompanyManagement from './company-management';
@@ -16,6 +16,3 @@ export default function AdminRoutes() {
     </Routes>
   );
 }
-
-
-

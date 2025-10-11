@@ -38,7 +38,6 @@ export default function App() {
               <Route path="/professionals" element={<ProfessionalsPage />} />
               <Route path="/jobs" element={<Jobs />} />
               <Route path="/about" element={<About />} />
-              <Route path="/admin" element={<Admin />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/applications" element={<Applications />} />
@@ -46,6 +45,14 @@ export default function App() {
               <Route path="/submit-story" element={<SubmitStory />} />
 
               {/* Employee & Employer - protected dashboard routes */}
+              <Route
+                path="/admin/*"
+                element={
+                  <ProtectedRoute allowedUserTypes={["admin"]}>
+                    <Admin />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/employee/dashboard"
                 element={
