@@ -8,7 +8,7 @@ import OurStories from "./pages/our-stories";
 import ProfessionalsPage from "./pages/professionals";
 import Jobs from "./pages/jobs";
 import About from "./pages/about";
-import Admin from "./pages/admin";
+import AdminRoutes from "./pages/admin/dashboard"; // This now correctly points to pages/admin/index.tsx
 import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Dashboards from "./pages/dashboards";
@@ -49,7 +49,7 @@ export default function App() {
                 path="/admin/*"
                 element={
                   <ProtectedRoute allowedUserTypes={["admin"]}>
-                    <Admin />
+                    <AdminRoutes />
                   </ProtectedRoute>
                 }
               />
