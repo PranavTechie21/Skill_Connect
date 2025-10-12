@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  Shield, Users, Building2, Briefcase, TrendingUp, Activity, Settings, 
-  LogOut, Moon, Sun, Menu, X, Search, Filter, MoreVertical, Eye, Edit, 
-  Trash2, CheckCircle, XCircle, AlertCircle, Clock, Mail, Phone, MapPin,
-  DollarSign, Calendar, Download, Upload, BarChart3, PieChart, FileText,
-  UserCheck, UserX, Pause, Play, Ban, ChevronDown, ArrowRight, Zap,
-  Target, Award, MessageSquare, Bell, Home, Database
+  Shield, Users, Building2, Briefcase, TrendingUp, Activity, Settings,
+  LogOut, Moon, Sun, Menu, X, Search, MoreVertical, Eye, Edit,
+  Trash2, CheckCircle, XCircle, AlertCircle, Clock, Mail,
+  Calendar, BarChart3, FileText, UserCheck, Pause, Play, Ban, ChevronDown,
+  ArrowRight, Zap, Target, Award, MessageSquare, Bell, Home
 } from 'lucide-react';
-
 interface AdminStats {
   totalUsers: number;
   totalEmployees: number;
@@ -81,6 +81,26 @@ const mockUsers: User[] = [
     joinDate: '2024-01-20',
     lastActive: '5 minutes ago',
     location: 'Austin, TX'
+  },
+  {
+    id: '4',
+    name: 'StartupXYZ',
+    email: 'contact@startupxyz.com',
+    type: 'employer',
+    status: 'active',
+    joinDate: '2024-01-25',
+    lastActive: '3 days ago',
+    location: 'San Francisco, CA'
+  },
+  {
+    id: '5',
+    name: 'Alice Johnson',
+    email: 'alice@example.com',
+    type: 'employee',
+    status: 'pending',
+    joinDate: '2024-01-28',
+    lastActive: '2 weeks ago',
+    location: 'Chicago, IL'
   }
 ];
 
@@ -114,13 +134,95 @@ const AdminDashboard: React.FC = () => {
 
   const admin = {
     name: 'Admin User',
-    email: 'admin@localskills.com',
+    email: 'admin@gmail.com',
     avatar: 'AD'
+  };
+
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Dynamic notifications/messages so the icons aren't static
+  const [notifications, setNotifications] = useState<{ id: string; title: string; time: string }[]>([]);
+  const [messagesList, setMessagesList] = useState<{ id: string; from: string; preview: string; time: string }[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMessages, setShowMessages] = useState(false);
+
+  const sampleNotificationTitles = [
+    'New user registered',
+    'New job posted',
+    'Payment failed for Employer X',
+    'Database backup completed',
+    'New support ticket opened',
+    'System alert: High CPU usage'
+  ];
+
+  const sampleMessagePreviews = [
+    'Can you review my application?',
+    'We need to update the job post',
+    'Thanks for the quick response!',
+    'Please confirm your availability',
+    'Here are the attachments you requested'
+  ];
+
+  const randomInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+  const generateNotifications = () => {
+    const count = randomInt(1, 5);
+    const items = Array.from({ length: count }).map((_, i) => ({
+      id: String(Date.now()) + i,
+      title: sampleNotificationTitles[Math.floor(Math.random() * sampleNotificationTitles.length)],
+      time: `${randomInt(1, 59)}m ago`
+    }));
+    setNotifications(items);
+  };
+
+  const generateMessages = () => {
+    const count = randomInt(1, 6);
+    const items = Array.from({ length: count }).map((_, i) => ({
+      id: String(Date.now()) + i,
+      from: ['Jane S.', 'TechCorp HR', 'Support'][Math.floor(Math.random() * 3)],
+      preview: sampleMessagePreviews[Math.floor(Math.random() * sampleMessagePreviews.length)],
+      time: `${randomInt(1, 59)}m ago`
+    }));
+    setMessagesList(items);
+  };
+
+  // initialize a few items on mount
+  useEffect(() => {
+    generateNotifications();
+    generateMessages();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (e) {
+      console.warn('Logout failed:', e);
+    }
+    navigate('/', { replace: true });
   };
 
   const NavItem = ({ icon: Icon, label, id, badge }: any) => (
     <button
-      onClick={() => setActiveTab(id)}
+      onClick={() => {
+        setActiveTab(id);
+        // map sidebar ids to admin routes
+        const routeMap: Record<string, string> = {
+          overview: '/admin',
+          users: '/admin/users',
+          employers: '/admin/companies',
+          employees: '/admin/employees',
+          jobs: '/admin/jobs',
+          applications: '/admin/applications',
+          approvals: '/admin/approvals',
+          analytics: '/admin/analytics',
+          settings: '/admin/settings',
+        };
+        const to = routeMap[id] || '/admin';
+        navigate(to);
+      }}
       className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
         activeTab === id
           ? darkMode
@@ -144,6 +246,15 @@ const AdminDashboard: React.FC = () => {
       )}
     </button>
   );
+
+  // Sync activeTab with route when location changes (keeps sidebar highlighted)
+  React.useEffect(() => {
+    if (location.pathname === '/admin' || location.pathname === '/admin/') {
+      setActiveTab('overview');
+    } else if (location.pathname.startsWith('/admin/settings')) {
+      setActiveTab('settings');
+    }
+  }, [location.pathname]);
 
   const getStatusBadge = (status: string) => {
     const configs = {
@@ -176,7 +287,7 @@ const AdminDashboard: React.FC = () => {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
       {/* Top Navbar */}
-      <nav className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b sticky top-0 z-50 backdrop-blur-lg bg-opacity-80`}>
+      <nav className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-opacity-80`}>
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -196,7 +307,7 @@ const AdminDashboard: React.FC = () => {
                     Admin Control Panel
                   </h1>
                   <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    Local Skills Job Board
+                    SkillConnect Admin Panel
                   </p>
                 </div>
               </div>
@@ -210,17 +321,72 @@ const AdminDashboard: React.FC = () => {
                 {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
 
-              <button className={`relative p-2.5 rounded-xl transition-all ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}>
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              <div className="relative">
+                <button onClick={() => { generateNotifications(); setShowNotifications(s => !s); setShowMessages(false); }} className={`relative p-2.5 rounded-xl transition-all ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+                  <Bell className="w-5 h-5" />
+                  {notifications.length > 0 && (
+                    <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                      {notifications.length}
+                    </span>
+                  )}
+                </button>
 
-              <button className={`relative p-2.5 rounded-xl transition-all ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}>
-                <MessageSquare className="w-5 h-5" />
-                <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                  5
-                </span>
-              </button>
+                {/* Notifications dropdown */}
+                {showNotifications && notifications.length > 0 && (
+                  <div className={`absolute right-0 mt-2 w-80 rounded-xl shadow-xl border py-2 z-40 transition-all ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                    <div className="px-4 py-2 border-b">
+                      <div className="flex items-center justify-between">
+                        <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Notifications</span>
+                        <button onClick={() => setNotifications([])} className="text-xs text-gray-400">Clear</button>
+                      </div>
+                    </div>
+                    <div className="max-h-64 overflow-auto">
+                      {notifications.map(n => (
+                        <div key={n.id} className={`px-4 py-3 border-b last:border-b-0 ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                          <div className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{n.title}</div>
+                          <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{n.time}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative">
+                <button onClick={() => { generateMessages(); setShowMessages(s => !s); setShowNotifications(false); }} className={`relative p-2.5 rounded-xl transition-all ${darkMode ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-600 hover:bg-gray-100'}`}>
+                  <MessageSquare className="w-5 h-5" />
+                  {messagesList.length > 0 && (
+                    <span className="absolute top-0 right-0 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                      {messagesList.length}
+                    </span>
+                  )}
+                </button>
+
+                {/* Messages dropdown */}
+                {showMessages && messagesList.length > 0 && (
+                  <div className={`absolute right-0 mt-2 w-80 rounded-xl shadow-xl border py-2 z-40 transition-all ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
+                    <div className="px-4 py-2 border-b">
+                      <div className="flex items-center justify-between">
+                        <span className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Messages</span>
+                        <button onClick={() => setMessagesList([])} className="text-xs text-gray-400">Clear</button>
+                      </div>
+                    </div>
+                    <div className="max-h-64 overflow-auto">
+                      {messagesList.map(m => (
+                        <div key={m.id} className={`px-4 py-3 border-b last:border-b-0 ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{m.from}</div>
+                              <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{m.preview}</div>
+                            </div>
+                            <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{m.time}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div className="relative group">
                 <button className="flex items-center gap-2 p-2 pr-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all">
@@ -237,12 +403,12 @@ const AdminDashboard: React.FC = () => {
                     <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{admin.name}</p>
                     <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{admin.email}</p>
                   </div>
-                  <button className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                  <button onClick={() => navigate('/admin/settings')} className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
                     <Settings className="w-4 h-4" />
                     Settings
                   </button>
                   <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'} mt-2 pt-2`}>
-                    <button className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                    <button onClick={handleLogout} className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
                       <LogOut className="w-4 h-4" />
                       Logout
                     </button>
@@ -254,7 +420,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       </nav>
 
-      <div className="flex">
+  <div className="flex mt-16">
         {/* Sidebar */}
         <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} transition-all duration-300 overflow-hidden border-r ${
           darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
@@ -724,88 +890,10 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Quick Actions */}
-                <div className={`rounded-2xl border p-6 ${
-                  darkMode ? 'bg-gradient-to-br from-red-600 to-rose-600' : 'bg-gradient-to-br from-red-500 to-rose-600'
-                } text-white`}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <Zap className="w-5 h-5" />
-                    <h3 className="text-lg font-bold">Quick Actions</h3>
-                  </div>
-
-                  <div className="space-y-2">
-                    <button className="w-full py-2.5 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all font-medium text-sm flex items-center justify-center gap-2">
-                      <Download className="w-4 h-4" />
-                      Export Data
-                    </button>
-                    <button className="w-full py-2.5 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all font-medium text-sm flex items-center justify-center gap-2">
-                      <Upload className="w-4 h-4" />
-                      Import Users
-                    </button>
-                    <button className="w-full py-2.5 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all font-medium text-sm flex items-center justify-center gap-2">
-                      <Database className="w-4 h-4" />
-                      Backup Database
-                    </button>
-                  </div>
-                </div>
-
-                {/* Platform Stats */}
-                <div className={`rounded-2xl border p-6 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className={`p-2 rounded-lg ${darkMode ? 'bg-indigo-500/20' : 'bg-indigo-100'}`}>
-                      <PieChart className={`w-5 h-5 ${darkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-                    </div>
-                    <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                      Platform Metrics
-                    </h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Applications Success Rate
-                        </span>
-                        <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                          68%
-                        </span>
-                      </div>
-                      <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                        <div className="bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full" style={{ width: '68%' }}></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Employer Satisfaction
-                        </span>
-                        <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                          85%
-                        </span>
-                      </div>
-                      <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                        <div className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2 rounded-full" style={{ width: '85%' }}></div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="flex justify-between mb-2">
-                        <span className={`text-sm font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                          Platform Uptime
-                        </span>
-                        <span className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                          99.9%
-                        </span>
-                      </div>
-                      <div className={`w-full rounded-full h-2 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'}`}>
-                        <div className="bg-gradient-to-r from-emerald-500 to-green-500 h-2 rounded-full" style={{ width: '99.9%' }}></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
+
+
 
             {/* Recent Jobs Table */}
             <div className={`rounded-2xl border p-6 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'}`}>

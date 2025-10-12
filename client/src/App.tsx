@@ -8,7 +8,7 @@ import OurStories from "./pages/our-stories";
 import ProfessionalsPage from "./pages/professionals";
 import Jobs from "./pages/jobs";
 import About from "./pages/about";
-import AdminRoutes from "./pages/admin/dashboard"; // This now correctly points to pages/admin/index.tsx
+import AdminRoutes from "./pages/admin"; // use admin route index for nested admin routes
 import Login from "./pages/login";
 import Signup from "./pages/signup";
 import Dashboards from "./pages/dashboards";
@@ -24,12 +24,14 @@ export default function App() {
   // that consumes it and renders the rest of the app.
   function AppContent() {
     const location = useLocation();
+    const isEmployeeRoute = location.pathname.startsWith("/employee");
+    const isAdminRoute = /^\/admin(\/|$)/.test(location.pathname);
 
     return (
       <div className="min-h-screen flex flex-col">
-        {/* Hide global Navbar on employee dashboard routes to show specialized layout */}
-        {!(location.pathname.startsWith("/employee")) && <Navbar />}
-        <main className="flex-1 pt-20">
+        {/* Hide global Navbar on employee and admin dashboard routes to show specialized layouts */}
+        {!(isEmployeeRoute || isAdminRoute) && <Navbar />}
+  <main className={"flex-1 " + (isAdminRoute ? "" : "pt-20")}>
           <Routes>
               {/* Public routes */}
               <Route path="/" element={<Home />} />

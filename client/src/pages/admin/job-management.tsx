@@ -1,105 +1,76 @@
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/contexts/AuthContext";
-import { Briefcase, Search, Edit, Trash2, Eye } from "lucide-react";
+import React from 'react';
+import AdminBackButton from '@/components/AdminBackButton';
+import { Briefcase, Building2, Calendar, Eye, Edit, Trash2 } from 'lucide-react';
 
-interface AdminJob {
+type Job = {
   id: string;
   title: string;
-  location: string;
-  isActive: boolean;
-  jobType: string;
-  salaryMin?: number;
-  salaryMax?: number;
-}
+  company: string;
+  location?: string;
+  postedDate: string;
+  status: 'active' | 'paused' | 'closed';
+  applications: number;
+};
 
-export default function JobManagement() {
-  const { user } = useAuth();
+const mockJobs: Job[] = [
+  { id: 'j1', title: 'Senior Frontend Engineer', company: 'TechCorp Inc.', location: 'San Francisco, CA', postedDate: '2024-09-01', status: 'active', applications: 42 },
+  { id: 'j2', title: 'Product Manager', company: 'StartupXYZ', location: 'Remote', postedDate: '2024-08-25', status: 'paused', applications: 18 },
+  { id: 'j3', title: 'Backend Engineer', company: 'DesignStudio', location: 'Los Angeles, CA', postedDate: '2024-08-20', status: 'active', applications: 27 }
+];
 
-  const { data: jobs = [] } = useQuery<AdminJob[]>({
-    queryKey: ["/api/admin/jobs"],
-    enabled: user?.userType === "admin",
-  });
-
-  if (user?.userType !== "admin") {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center text-red-600">Access Denied</CardTitle>
-            <CardDescription className="text-center">
-              You don't have permission to access this page.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
+export default function JobManagement(): JSX.Element {
   return (
     <div className="container mx-auto py-8 px-4">
-      <div className="flex items-center space-x-2 mb-8">
-        <Briefcase className="h-8 w-8 text-green-600" />
-        <h1 className="text-3xl font-bold">Job Management</h1>
+      <div className="mb-4">
+        <AdminBackButton />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Jobs</CardTitle>
-          <CardDescription>Monitor and manage job postings</CardDescription>
-          <div className="flex items-center space-x-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input placeholder="Search jobs..." className="pl-10" />
-            </div>
-            <Button>Add Job</Button>
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center space-x-3">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-lg">
+            <Briefcase className="w-6 h-6 text-white" />
           </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {jobs.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">No jobs found.</p>
-            ) : (
-              jobs.map((job) => (
-                <div key={job.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-3">
-                      <div>
-                        <p className="font-medium">{job.title}</p>
-                        <p className="text-sm text-muted-foreground">{job.location}</p>
-                      </div>
-                      <Badge variant={job.isActive ? 'default' : 'secondary'}>
-                        {job.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                      <Badge variant="outline">{job.jobType}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      ${job.salaryMin?.toLocaleString()} - ${job.salaryMax?.toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button variant="outline" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+          <div>
+            <h1 className="text-3xl font-bold">Job Postings</h1>
+            <p className="text-sm text-gray-500">Manage active and historic job postings</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl">Create Job</button>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {mockJobs.map((job) => (
+          <div key={job.id} className="p-4 border rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold">
+                {job.company.substring(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">{job.title}</h3>
+                <div className="text-sm text-gray-500 flex items-center gap-3">
+                  <span className="flex items-center gap-1"><Building2 className="w-4 h-4" />{job.company}</span>
+                  <span className="flex items-center gap-1"><Calendar className="w-4 h-4" />{job.postedDate}</span>
+                  <span className="text-xs px-2 py-1 rounded-full bg-gray-100">{job.location}</span>
                 </div>
-              ))
-            )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${job.status === 'active' ? 'bg-emerald-50 text-emerald-700' : job.status === 'paused' ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-700'}`}>
+                {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
+              </span>
+              <div className="flex items-center gap-2">
+                <button className="p-2 rounded-lg hover:bg-gray-100"><Eye className="w-4 h-4" /></button>
+                <button className="p-2 rounded-lg hover:bg-gray-100"><Edit className="w-4 h-4" /></button>
+                <button className="p-2 rounded-lg hover:bg-gray-100 text-red-600"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
     </div>
   );
 }
-
-
-
+ 

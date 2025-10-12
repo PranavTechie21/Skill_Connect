@@ -46,7 +46,7 @@ export default function Login() {
 
     try {
       await auth.login(form.email, form.password);
-      toast({ title: "Success", description: "Logged in successfully" });
+  toast({ title: "Success", description: "Logged in successfully", variant: 'success' as any });
       // The useEffect hook will handle redirection once the user state is updated.
     } catch (err: any) {
       toast({ title: "Error", description: err?.message || "Invalid credentials", variant: "destructive" });

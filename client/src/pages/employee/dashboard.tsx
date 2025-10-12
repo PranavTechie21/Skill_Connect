@@ -1,1 +1,1 @@
-export { default } from './EmployeeDashboard';
+export { default } from './employeeDashboard';

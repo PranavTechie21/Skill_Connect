@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { insertJobSchema, insertCompanySchema, Company, Job } from "../../shared/schema";
+import { insertJobSchema, insertCompanySchema, Company, Job } from "@shared/schema";
 import { Building, Plus, X, Eye, Users, MapPin, Clock, DollarSign } from "lucide-react";
 import { z } from "zod";
 

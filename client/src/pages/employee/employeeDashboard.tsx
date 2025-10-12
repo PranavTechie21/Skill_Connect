@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AdminBackButton from '@/components/AdminBackButton';
 import {
   Search, MapPin, Bookmark, Bell, MessageSquare, User, FileText, 
   TrendingUp, Clock, CheckCircle, XCircle, Briefcase, Filter, Plus, 
@@ -365,12 +366,15 @@ const EmployeeDashboard: React.FC = () => {
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className={`p-2 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
-              >
-                {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </button>
+                    <div className="mr-3">
+                      <AdminBackButton fallback="/employee" className="!px-2 !py-1" />
+                    </div>
+                    <button
+                      onClick={() => setSidebarOpen(!sidebarOpen)}
+                      className={`p-2 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                    >
+                      {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                    </button>
               
               <div>
                 <h1 className={`text-2xl font-bold ${
