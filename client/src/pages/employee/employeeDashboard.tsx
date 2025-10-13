@@ -462,14 +462,7 @@ const EmployeeDashboard: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2.5 rounded-xl transition-all ${
-                  darkMode ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
+
 
               <div className="relative">
                 <button 

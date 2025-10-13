@@ -358,14 +358,7 @@ const EmployeeMessages: React.FC = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`p-3 rounded-xl transition-all ${
-                darkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'
-              }`}
-            >
-              {darkMode ? <Sun className="w-5 h-5 text-yellow-400" /> : <Moon className="w-5 h-5 text-gray-600" />}
-            </button>
+
           </div>
         </div>
 
