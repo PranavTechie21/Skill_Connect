@@ -123,7 +123,11 @@ const routeConfig = {
     { path: ROUTES.EMPLOYER.DASHBOARD, element: <EmployerDashboard /> },
     { path: ROUTES.EMPLOYER.JOB_MANAGEMENT, element: <JobManagement /> },
     { path: ROUTES.EMPLOYER.PROFILE, element: <EmployerProfile /> },
-    { path: ROUTES.EMPLOYER.SETTINGS, element: <EmployerSettings /> }
+    { path: ROUTES.EMPLOYER.SETTINGS, element: <EmployerSettings /> },
+    { path: ROUTES.EMPLOYER.MESSAGES, element: <Messages /> },
+    { path: ROUTES.EMPLOYER.APPLICATIONS, element: <Applications /> },
+    { path: ROUTES.EMPLOYER.ANALYTICS, element: <Analytics /> },
+    { path: ROUTES.EMPLOYER.STORIES, element: <Stories /> }
   ],
   admin: [
     { path: ROUTES.ADMIN.BASE, element: <AdminRoutes /> }

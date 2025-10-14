@@ -146,11 +146,10 @@ export default function Messages() {
     return <Check className="w-4 h-4 text-gray-500" />;
   };
 
+  const { theme } = useTheme();
+  const darkMode = theme === 'dark';
+
   return (
-    const { theme } = useTheme();
-    const darkMode = theme === 'dark';
-    
-    return (
     <div className={`min-h-screen ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
       {/* Animated background */}
       {darkMode && <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -324,7 +323,7 @@ export default function Messages() {
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Type your message..."
-                    rows="2"
+                    rows={2}
                     className="w-full bg-transparent text-gray-100 placeholder-gray-500 resize-none focus:outline-none text-sm"
                   />
                   <div className="flex items-center gap-2 mt-2">
