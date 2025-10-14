@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from "@/components/theme-provider";
+import { ModeToggle } from "@/components/ui/dark-mode-toggle";
 import {
-  Briefcase, Users, TrendingUp, Clock, Search, Plus, MoreVertical, 
-  MapPin, DollarSign, Calendar, Eye, Mail, MessageSquare, Bell, 
-  Settings, LogOut, Moon, Sun, Menu, X, Home, FileText, BarChart3,
-  User, Star, Filter, ChevronDown, Edit, Pause, Play, Trash2, Copy,
-  CheckCircle, XCircle, AlertCircle, ArrowRight, Target, Award, Zap
+  Briefcase, Users, TrendingUp, Clock, Plus, MoreVertical, 
+  MapPin, DollarSign, Calendar, Eye, Settings, LogOut, Menu, X, 
+  Home, BarChart3, User, Star, ChevronDown, Edit, Pause, Play, 
+  Trash2, Copy, CheckCircle, ArrowRight, Target, Award, Zap, Mail,
+  Bell
 } from 'lucide-react';
 
 interface Job {
@@ -107,15 +109,16 @@ const mockApplications: Application[] = [
 ];
 
 const EmployerDashboard: React.FC = () => {
-  const [darkMode, setDarkMode] = useState(false);
+  const { theme } = useTheme();
+  const darkMode = theme === 'dark';
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [jobs] = useState<Job[]>(mockJobs);
   const [applications] = useState<Application[]>(mockApplications);
 
   const company = {
-    name: 'TechCorp Inc.',
-    logo: 'TC',
+    name: 'SkillConnect',
+    logo: 'SC',
     plan: 'Professional'
   };
 
@@ -200,93 +203,87 @@ const EmployerDashboard: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen w-screen transition-colors duration-300 fixed inset-0 ${darkMode ? 'bg-gray-900' : 'bg-gray-50'} overflow-x-hidden`}>
-  {/* Top Navbar */}
-  <nav className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b fixed top-0 left-0 right-0 z-50 backdrop-blur-lg bg-opacity-80`}>
-        <div className="px-0 py-4">
-          <div className="flex items-center justify-between">
-            {/* Left side */}
+    <div className={`min-h-screen w-screen transition-colors duration-300 fixed inset-0 ${darkMode ? 'bg-[#0f172a]' : 'bg-gray-50'} overflow-x-hidden`}>
+      {/* Employer Dashboard Navbar */}
+      <div className={`fixed top-0 left-0 right-0 z-50 ${darkMode ? 'bg-gray-900/80 backdrop-blur-sm border-gray-800' : 'bg-white/80 backdrop-blur-sm border-gray-200'} border-b`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className={`p-2 rounded-lg ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-100 text-gray-600'}`}
+                className={`p-2 rounded-lg ${darkMode ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}
               >
                 {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
               </button>
-              
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
-                  {company.logo}
+
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center text-white font-medium">
+                  SC
                 </div>
-                <div>
-                  <h1 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                    {company.name}
-                  </h1>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {company.plan} Plan
-                  </p>
-                </div>
+                <h1 className={`text-xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'} font-['Poppins']`}>
+                  SkillConnect
+                </h1>
               </div>
             </div>
 
-            {/* Right side */}
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2.5 rounded-xl ${darkMode ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'} transition-all`}
-              >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <button className={`relative p-2 rounded-lg ${darkMode ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
+                  <Mail className="w-5 h-5" />
+                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-blue-500 ring-2 ring-gray-50 dark:ring-gray-900"></span>
+                </button>
+                
+                <button className={`p-2 rounded-lg ${darkMode ? 'text-gray-400 hover:text-white hover:bg-gray-800' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'}`}>
+                  <Bell className="w-5 h-5" />
+                </button>
+              </div>
 
-              <button className="relative p-2.5 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl transition-all">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
-
-              <button className="relative p-2.5 text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700 rounded-xl transition-all">
-                <MessageSquare className="w-5 h-5" />
-                <span className="absolute top-1 right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                  3
-                </span>
-              </button>
-
-              <div className="relative group">
-                <button className="flex items-center gap-2 p-2 pr-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-all">
-                  <div className="w-9 h-9 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center text-white font-bold">
-                    HR
+              <div className="ml-3 relative group">
+                <button className={`flex items-center max-w-xs rounded-lg text-sm p-2 gap-2 ${darkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-100 hover:bg-gray-200'}`}>
+                  <div className="h-8 w-8 rounded-md bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-center text-white font-medium">
+                    TC
                   </div>
-                  <ChevronDown className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+                  <div className="hidden md:block text-left">
+                    <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>TechCorp Inc.</p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Employer</p>
+                  </div>
+                  <ChevronDown className={`hidden md:block w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
                 </button>
 
-                <div className={`absolute right-0 mt-2 w-56 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-xl border py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all`}>
-                  <div className={`px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                    <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>HR</p>
-                    <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>hr@techcorp.com</p>
+                <div className={`absolute right-0 mt-2 w-56 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-lg shadow-lg py-1 ring-1 ring-black ring-opacity-5 focus:outline-none opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all border`}>
+                  <div className={`px-4 py-2 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <p className={`text-sm font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>{company.name}</p>
+                    <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>{company.plan} Plan</p>
                   </div>
-                  <button className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                  <button className={`w-full px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'} flex items-center gap-2`}>
                     <User className="w-4 h-4" />
                     Company Profile
                   </button>
-                  <button className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
+                  <button className={`w-full px-4 py-2 text-sm ${darkMode ? 'text-gray-300 hover:bg-gray-700 hover:text-white' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'} flex items-center gap-2`}>
                     <Settings className="w-4 h-4" />
                     Settings
                   </button>
-                  <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'} mt-2 pt-2`}>
-                    <button onClick={handleLogout} className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
+                  <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                    <button 
+                      onClick={handleLogout}
+                      className={`w-full px-4 py-2 text-sm ${darkMode ? 'text-red-400 hover:bg-red-500/10' : 'text-red-600 hover:bg-red-50'} flex items-center gap-2`}
+                    >
                       <LogOut className="w-4 h-4" />
-                      Logout
+                      Sign Out
                     </button>
                   </div>
                 </div>
               </div>
+
+              <ModeToggle />
             </div>
           </div>
         </div>
-      </nav>
+      </div>
 
   <div className="flex mt-16 relative">
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} h-[calc(100vh-4rem)] sticky top-16 ${darkMode ? 'bg-gray-800' : 'bg-white'} border-r ${darkMode ? 'border-gray-700' : 'border-gray-200'} transition-all duration-300 overflow-hidden`}>
+        <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} h-[calc(100vh-4rem)] sticky top-16 ${darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border-r transition-all duration-300 overflow-hidden backdrop-blur-sm`}>
           <div className="p-6 space-y-6 h-full overflow-y-auto">
             {/* Quick Stats */}
             <div>
@@ -294,15 +291,15 @@ const EmployerDashboard: React.FC = () => {
                 Quick Stats
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-blue-50'}`}>
-                  <Briefcase className={`w-5 h-5 mb-1 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.activeJobs}</p>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Active Jobs</p>
+                <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                  <Briefcase className="w-5 h-5 mb-1 text-blue-400" />
+                  <p className="text-2xl font-bold text-gray-100">{stats.activeJobs}</p>
+                  <p className="text-xs text-gray-400">Active Jobs</p>
                 </div>
-                <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-purple-50'}`}>
-                  <Users className={`w-5 h-5 mb-1 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
-                  <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.totalApplications}</p>
-                  <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Applications</p>
+                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                  <Users className="w-5 h-5 mb-1 text-purple-400" />
+                  <p className="text-2xl font-bold text-gray-100">{stats.totalApplications}</p>
+                  <p className="text-xs text-gray-400">Applications</p>
                 </div>
               </div>
             </div>
@@ -317,7 +314,7 @@ const EmployerDashboard: React.FC = () => {
                 <NavItem icon={Briefcase} label="Job Postings" id="jobs" badge={stats.activeJobs} />
                 <NavItem icon={Users} label="Applications" id="applications" badge="12" />
                 <NavItem icon={Star} label="Candidates" id="candidates" />
-                <NavItem icon={MessageSquare} label="Messages" id="messages" badge="3" />
+                <NavItem icon={Mail} label="Messages" id="messages" badge="3" />
                 <NavItem icon={BarChart3} label="Analytics" id="analytics" />
                 <NavItem icon={TrendingUp} label="Stories" id="stories" />
                 <NavItem icon={Settings} label="Settings" id="settings" />
@@ -342,7 +339,7 @@ const EmployerDashboard: React.FC = () => {
           <div className="max-w-7xl mx-auto space-y-8">
             {/* Header */}
             <div>
-              <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              <h1 className={`text-3xl font-bold mb-2 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>
                 Dashboard Overview
               </h1>
               <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>

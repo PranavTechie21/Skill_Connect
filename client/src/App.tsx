@@ -3,8 +3,11 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "r
 import { AuthProvider } from "./contexts/AuthContext";
 import { SavedJobsProvider } from "./contexts/SavedJobsContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/navbar";
 import EmployeeLayout from "./components/layouts/EmployeeLayout";
+import EmployerLayout from "./components/layouts/employer-layout";
+
 
 // Public Pages
 import Home from "./pages/home";
@@ -32,8 +35,21 @@ import EmployeeProfile from "./pages/employee/profile";
 import EmployeeStory from "./pages/employee/story";
 import EmployeeSettings from "./pages/employee/settings";
 
+//Employer Pages
+import JobManagement from "./pages/employer/job-management";
+import EmployerProfile from "./pages/employer/profile";
+import EmployerSettings from "./pages/employer/settings";
+import Analytics from "./pages/employer/analytics.tsx";
+import Stories from "./pages/employer/stories.tsx";
+import Messages from "./pages/employer/messages.tsx";
+import Applications from "./pages/employer/applications.tsx";
+
+
 // Admin Routes
 import AdminRoutes from "./pages/admin";
+
+
+
 
 // Route configuration for better maintainability
 const ROUTES = {
@@ -64,7 +80,14 @@ const ROUTES = {
   },
   EMPLOYER: {
     BASE: "/employer",
-    DASHBOARD: "/employer/dashboard"
+    DASHBOARD: "/employer/dashboard", 
+    JOB_MANAGEMENT: "/employer/jobs",
+    PROFILE: "/employer/profile",
+    SETTINGS: "/employer/settings",
+    MESSAGES: "/employer/messages",
+    APPLICATIONS: "/employer/applications",
+    ANALYTICS: "/employer/analytics",
+    STORIES: "/employer/stories"
   },
   ADMIN: {
     BASE: "/admin/*"
@@ -97,7 +120,10 @@ const routeConfig = {
     { path: ROUTES.EMPLOYEE.SETTINGS, element: <EmployeeSettings /> }
   ],
   employer: [
-    { path: ROUTES.EMPLOYER.DASHBOARD, element: <EmployerDashboard /> }
+    { path: ROUTES.EMPLOYER.DASHBOARD, element: <EmployerDashboard /> },
+    { path: ROUTES.EMPLOYER.JOB_MANAGEMENT, element: <JobManagement /> },
+    { path: ROUTES.EMPLOYER.PROFILE, element: <EmployerProfile /> },
+    { path: ROUTES.EMPLOYER.SETTINGS, element: <EmployerSettings /> }
   ],
   admin: [
     { path: ROUTES.ADMIN.BASE, element: <AdminRoutes /> }
@@ -109,11 +135,13 @@ function useRouteVisibility() {
   const location = useLocation();
   
   const isEmployeeRoute = location.pathname.startsWith(ROUTES.EMPLOYEE.BASE);
+  const isEmployerRoute = location.pathname.startsWith(ROUTES.EMPLOYER.BASE);
   const isAdminRoute = location.pathname.startsWith('/admin');
-  const isSpecialRoute = isEmployeeRoute || isAdminRoute;
+  const isSpecialRoute = isEmployeeRoute || isEmployerRoute || isAdminRoute;
   
   return {
     isEmployeeRoute,
+    isEmployerRoute,
     isAdminRoute,
     isSpecialRoute,
     showNavbar: !isSpecialRoute,
@@ -160,18 +188,20 @@ function AppContent() {
             ))}
           </Route>
 
-          {/* Employer Routes */}
-          {routeConfig.employer.map(({ path, element }) => (
-            <Route
-              key={path}
-              path={path}
-              element={
-                <ProtectedRoute allowedUserTypes={["Employer"]}>
-                  {element}
-                </ProtectedRoute>
-              }
-            />
-          ))}
+          {/* Employer Routes with Layout */}
+          <Route element={<EmployerLayout />}>
+            {routeConfig.employer.map(({ path, element }) => (
+              <Route
+                key={path}
+                path={path}
+                element={
+                  <ProtectedRoute allowedUserTypes={["Employer"]}>
+                    {element}
+                  </ProtectedRoute>
+                }
+              />
+            ))}
+          </Route>
 
           {/* Automatic Redirects */}
           <Route path={ROUTES.EMPLOYEE.BASE} element={<Navigate to={ROUTES.EMPLOYEE.DASHBOARD} replace />} />
@@ -247,7 +277,9 @@ export default function App() {
           <Router>
             <AuthProvider>
               <SavedJobsProvider>
-                <AppContent />
+                <ThemeProvider defaultTheme="system" storageKey="skillconnect-theme">
+                  <AppContent />
+                </ThemeProvider>
               </SavedJobsProvider>
             </AuthProvider>
           </Router>
@@ -256,15 +288,5 @@ export default function App() {
   );
 }
 
-// Add TypeScript interfaces for better type safety
-interface RouteConfig {
-  path: string;
-  element: React.ReactElement;
-}
 
-interface AppRouteConfig {
-  public: RouteConfig[];
-  employee: RouteConfig[];
-  employer: RouteConfig[];
-  admin: RouteConfig[];
-}
+
