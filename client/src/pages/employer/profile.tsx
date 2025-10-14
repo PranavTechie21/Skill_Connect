@@ -91,7 +91,7 @@ export default function Profile() {
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-[#0f172a]' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
       <div className="container mx-auto p-6 max-w-6xl">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">

@@ -170,7 +170,7 @@ export default function JobManagement() {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-[#0f172a]' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
       <div className="container mx-auto p-6 max-w-7xl">
         {/* Back Button */}
         <div className="mb-6">

@@ -176,7 +176,7 @@ export default function Analytics() {
                   title={`${analyticsData.traffic.applicants[index]} applicants`}
                 />
               </div>
-              <span className="text-xs text-gray-400 mt-2">
+              <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2`}>
                 {analyticsData.traffic.dates[index]}
               </span>
             </div>
@@ -185,11 +185,11 @@ export default function Analytics() {
         <div className="flex justify-center space-x-6 text-sm">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-blue-500 rounded"></div>
-            <span className="text-gray-300">Page Views</span>
+            <span className={`${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Page Views</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 bg-green-500 rounded"></div>
-            <span className="text-gray-300">Applicants</span>
+            <span className={`${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Applicants</span>
           </div>
         </div>
       </div>
@@ -197,8 +197,8 @@ export default function Analytics() {
   );
 
   const SourcesChart = () => (
-    <div className="bg-gray-800/80 border border-gray-700/50 rounded-lg p-6 backdrop-blur-sm">
-      <h3 className="text-lg font-semibold text-white mb-6">Applicant Sources</h3>
+    <div className={`${isDark ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg p-6 backdrop-blur-sm`}>
+      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-6`}>Applicant Sources</h3>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="flex flex-col space-y-4">
           {analyticsData.applicantSources.map((source, index) => (
@@ -208,11 +208,11 @@ export default function Analytics() {
                   className="w-4 h-4 rounded-full" 
                   style={{ backgroundColor: source.color }}
                 />
-                <span className="text-gray-300 text-sm">{source.source}</span>
+                <span className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm`}>{source.source}</span>
               </div>
               <div className="flex items-center space-x-3">
-                <span className="text-white font-medium">{source.count}</span>
-                <span className="text-gray-400 text-sm">({source.percentage}%)</span>
+                <span className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{source.count}</span>
+                <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'} text-sm`}>({source.percentage}%)</span>
               </div>
             </div>
           ))}
@@ -220,7 +220,7 @@ export default function Analytics() {
         <div className="flex items-center justify-center">
           {/* Simplified pie chart visualization */}
           <div className="relative w-48 h-48">
-            <div className="absolute inset-0 rounded-full border-8 border-gray-700" />
+            <div className={`absolute inset-0 rounded-full border-8 ${isDark ? 'border-gray-700' : 'border-gray-200'}`} />
             {analyticsData.applicantSources.map((source, index) => {
               const total = analyticsData.applicantSources.length;
               const angle = (index / total) * 360;
@@ -241,34 +241,34 @@ export default function Analytics() {
   );
 
   const TopJobsList = () => (
-    <div className="bg-gray-800/80 border border-gray-700/50 rounded-lg p-6 backdrop-blur-sm">
-      <h3 className="text-lg font-semibold text-white mb-6">Top Performing Jobs</h3>
+    <div className={`${isDark ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg p-6 backdrop-blur-sm`}>
+      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-6`}>Top Performing Jobs</h3>
       <div className="space-y-4">
         {analyticsData.topJobs.map((job, index) => (
-          <div key={job.id} className="flex items-center justify-between p-4 bg-gray-700/50 rounded-lg hover:bg-gray-700/70 transition-colors duration-300">
+          <div key={job.id} className={`flex items-center justify-between p-4 ${isDark ? 'bg-gray-700/50' : 'bg-gray-100'} rounded-lg hover:bg-gray-700/70 transition-colors duration-300`}>
             <div className="flex items-center space-x-4">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">{index + 1}</span>
               </div>
               <div>
-                <h4 className="text-white font-medium">{job.title}</h4>
-                <p className="text-gray-400 text-sm">{job.department}</p>
+                <h4 className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{job.title}</h4>
+                <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-sm`}>{job.department}</p>
               </div>
             </div>
             <div className="flex items-center space-x-6 text-sm">
               <div className="text-right">
-                <p className="text-white font-medium">{job.views.toLocaleString()}</p>
-                <p className="text-gray-400 text-xs">Views</p>
+                <p className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{job.views.toLocaleString()}</p>
+                <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>Views</p>
               </div>
               <div className="text-right">
-                <p className="text-white font-medium">{job.applicants}</p>
-                <p className="text-gray-400 text-xs">Applicants</p>
+                <p className={`${isDark ? 'text-white' : 'text-gray-900'} font-medium`}>{job.applicants}</p>
+                <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>Applicants</p>
               </div>
               <div className="text-right">
-                <p className="text-green-400 font-medium">{job.conversionRate}%</p>
-                <p className="text-gray-400 text-xs">Conversion</p>
+                <p className="text-green-500 font-medium">{job.conversionRate}%</p>
+                <p className={`${isDark ? 'text-gray-400' : 'text-gray-600'} text-xs`}>Conversion</p>
               </div>
-              <button className="text-gray-400 hover:text-white transition-colors duration-300">
+              <button className={`${isDark ? 'text-gray-400' : 'text-gray-500'} hover:text-white transition-colors duration-300`}>
                 <MoreHorizontal className="w-5 h-5" />
               </button>
             </div>
@@ -279,26 +279,26 @@ export default function Analytics() {
   );
 
   const DemographicChart = () => (
-    <div className="bg-gray-800/80 border border-gray-700/50 rounded-lg p-6 backdrop-blur-sm">
-      <h3 className="text-lg font-semibold text-white mb-6">Applicant Demographics</h3>
+    <div className={`${isDark ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg p-6 backdrop-blur-sm`}>
+      <h3 className={`text-lg font-semibold ${isDark ? 'text-white' : 'text-gray-900'} mb-6`}>Applicant Demographics</h3>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
-          <h4 className="text-gray-300 font-medium mb-4 flex items-center">
+          <h4 className={`${isDark ? 'text-gray-300' : 'text-gray-700'} font-medium mb-4 flex items-center`}>
             <MapPin className="w-4 h-4 mr-2" />
             Top Locations
           </h4>
           <div className="space-y-3">
             {analyticsData.demographic.locations.map((location, index) => (
               <div key={location.location} className="flex items-center justify-between">
-                <span className="text-gray-300 text-sm">{location.location}</span>
+                <span className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm`}>{location.location}</span>
                 <div className="flex items-center space-x-3">
-                  <div className="w-24 bg-gray-700 rounded-full h-2">
+                  <div className={`w-24 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2`}>
                     <div 
                       className="bg-blue-500 h-2 rounded-full"
                       style={{ width: `${(location.applicants / 89) * 100}%` }}
                     />
                   </div>
-                  <span className="text-white text-sm font-medium w-8 text-right">
+                  <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-sm font-medium w-8 text-right`}>
                     {location.applicants}
                   </span>
                 </div>
@@ -307,22 +307,22 @@ export default function Analytics() {
           </div>
         </div>
         <div>
-          <h4 className="text-gray-300 font-medium mb-4 flex items-center">
+          <h4 className={`${isDark ? 'text-gray-300' : 'text-gray-700'} font-medium mb-4 flex items-center`}>
             <Award className="w-4 h-4 mr-2" />
             Experience Levels
           </h4>
           <div className="space-y-3">
             {analyticsData.demographic.experience.map((exp) => (
               <div key={exp.level} className="flex items-center justify-between">
-                <span className="text-gray-300 text-sm">{exp.level}</span>
+                <span className={`${isDark ? 'text-gray-300' : 'text-gray-700'} text-sm`}>{exp.level}</span>
                 <div className="flex items-center space-x-3">
-                  <div className="w-24 bg-gray-700 rounded-full h-2">
+                  <div className={`w-24 ${isDark ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2`}>
                     <div 
                       className="bg-green-500 h-2 rounded-full"
                       style={{ width: `${(exp.count / 128) * 100}%` }}
                     />
                   </div>
-                  <span className="text-white text-sm font-medium w-8 text-right">
+                  <span className={`${isDark ? 'text-white' : 'text-gray-900'} text-sm font-medium w-8 text-right`}>
                     {exp.count}
                   </span>
                 </div>
@@ -337,7 +337,7 @@ export default function Analytics() {
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
       {/* Animated background */}
-      <div className={`fixed inset-0 overflow-hidden pointer-events-none ${isDark ? 'opacity-100' : 'opacity-30'}`}>
+      <div className={`fixed inset-0 overflow-hidden pointer-events-none ${isDark ? 'opacity-100' : 'opacity-0'}`}>
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
@@ -364,7 +364,7 @@ export default function Analytics() {
               <option value="90d">Last 90 days</option>
               <option value="1y">Last year</option>
             </select>
-            <button className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors duration-300">
+            <button className={`flex items-center space-x-2 ${isDark ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white px-4 py-2 rounded-lg transition-colors duration-300`}>
               <Download className="w-4 h-4" />
               <span>Export Report</span>
             </button>

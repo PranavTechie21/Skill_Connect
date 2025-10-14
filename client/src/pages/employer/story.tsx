@@ -285,7 +285,7 @@ const EmployerStories: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-50 dark:bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 transition-colors duration-300">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
         <header className="mb-8">
