@@ -214,7 +214,7 @@ const EmployeeMessages: React.FC = () => {
             : 'bg-indigo-50 border border-indigo-200'
           : darkMode
           ? 'hover:bg-gray-700/50'
-          : 'hover:bg-gray-50'
+          : 'hover:bg-gray-100'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -225,7 +225,7 @@ const EmployeeMessages: React.FC = () => {
             <User className={`w-6 h-6 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
           </div>
           {conversation.isOnline && (
-            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+            <div className={`absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'}`} />
           )}
         </div>
         
@@ -247,12 +247,12 @@ const EmployeeMessages: React.FC = () => {
                   e.stopPropagation();
                   togglePin(conversation.id);
                 }}
-                className="p-1 hover:bg-gray-600/20 rounded"
+                className={`p-1 rounded ${darkMode ? 'hover:bg-gray-600/20' : 'hover:bg-gray-200'}`}
               >
                 {conversation.isPinned ? (
-                  <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                  <Star className="w-4 h-4 text-yellow-400 fill-current" />
                 ) : (
-                  <StarOff className="w-4 h-4 text-gray-400" />
+                  <StarOff className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                 )}
               </button>
             </div>
@@ -266,7 +266,7 @@ const EmployeeMessages: React.FC = () => {
           
           <p className={`text-sm truncate ${
             conversation.unread > 0
-              ? 'text-white font-semibold'
+              ? darkMode ? 'text-white font-semibold' : 'text-gray-900 font-semibold'
               : darkMode
               ? 'text-gray-500'
               : 'text-gray-500'
@@ -279,7 +279,7 @@ const EmployeeMessages: React.FC = () => {
           <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold ${
             darkMode
               ? 'bg-blue-500 text-white'
-              : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white'
+              : 'bg-indigo-600 text-white'
           }`}>
             {conversation.unread}
           </div>
@@ -293,19 +293,19 @@ const EmployeeMessages: React.FC = () => {
     
     return (
       <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}>
-        <div className={`max-w-xs lg:max-w-md rounded-2xl p-4 ${
+        <div className={`max-w-xs lg:max-w-md rounded-2xl p-4 shadow-md ${
           isOwn
             ? darkMode
               ? 'bg-blue-600 text-white'
-              : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white'
+              : 'bg-indigo-600 text-white'
             : darkMode
             ? 'bg-gray-700 text-white'
-            : 'bg-gray-100 text-gray-900'
+            : 'bg-white text-gray-900'
         }`}>
           <p className="text-sm leading-relaxed">{message.content}</p>
           <div className={`flex items-center gap-2 mt-2 text-xs ${
             isOwn
-              ? 'text-blue-100'
+              ? darkMode ? 'text-blue-100' : 'text-indigo-100'
               : darkMode
               ? 'text-gray-400'
               : 'text-gray-500'
@@ -328,7 +328,7 @@ const EmployeeMessages: React.FC = () => {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
-      darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'
+      darkMode ? 'bg-gray-900' : 'bg-gray-50'
     }`}>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
@@ -339,7 +339,7 @@ const EmployeeMessages: React.FC = () => {
               className={`p-2 rounded-xl transition-all ${
                 darkMode
                   ? 'hover:bg-gray-700 text-gray-400'
-                  : 'hover:bg-gray-100 text-gray-600'
+                  : 'hover:bg-gray-200 text-gray-600'
               }`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -348,7 +348,7 @@ const EmployeeMessages: React.FC = () => {
             </button>
             <div>
               <h1 className={`text-3xl font-black ${
-                darkMode ? 'text-white' : 'bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent'
+                darkMode ? 'text-white' : 'text-gray-900'
               }`}>
                 Messages
               </h1>
@@ -368,8 +368,8 @@ const EmployeeMessages: React.FC = () => {
           <div className="w-96 flex-shrink-0 flex flex-col">
             {/* Search Bar */}
             <div className={`rounded-2xl p-2 mb-4 ${
-              darkMode ? 'bg-gray-800' : 'bg-white'
-            } shadow-lg`}>
+              darkMode ? 'bg-gray-800' : 'bg-white shadow-lg'
+            }`}>
               <div className="relative">
                 <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
                   darkMode ? 'text-gray-500' : 'text-gray-400'
@@ -397,10 +397,10 @@ const EmployeeMessages: React.FC = () => {
                     tab === 'All'
                       ? darkMode
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white'
+                        : 'bg-indigo-600 text-white shadow-md'
                       : darkMode
                       ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      : 'bg-white text-gray-700 hover:bg-gray-100'
+                      : 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm'
                   }`}
                 >
                   {tab}
@@ -410,8 +410,8 @@ const EmployeeMessages: React.FC = () => {
 
             {/* Conversations List */}
             <div className={`flex-1 rounded-2xl ${
-              darkMode ? 'bg-gray-800' : 'bg-white'
-            } shadow-lg overflow-y-auto`}>
+              darkMode ? 'bg-gray-800' : 'bg-white shadow-lg'
+            } overflow-y-auto`}>
               <div className="p-4 space-y-2">
                 {conversations.map(conversation => (
                   <ConversationItem
@@ -429,8 +429,8 @@ const EmployeeMessages: React.FC = () => {
               <>
                 {/* Chat Header */}
                 <div className={`rounded-2xl p-4 mb-4 ${
-                  darkMode ? 'bg-gray-800' : 'bg-white'
-                } shadow-lg`}>
+                  darkMode ? 'bg-gray-800' : 'bg-white shadow-lg'
+                }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative">
@@ -440,7 +440,7 @@ const EmployeeMessages: React.FC = () => {
                           <User className={`w-6 h-6 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
                         </div>
                         {currentConversation.isOnline && (
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white" />
+                          <div className={`absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 ${darkMode ? 'border-gray-800' : 'border-white'}`} />
                         )}
                       </div>
                       <div>
@@ -459,17 +459,17 @@ const EmployeeMessages: React.FC = () => {
                     
                     <div className="flex items-center gap-2">
                       <button className={`p-3 rounded-xl transition-all ${
-                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
                       }`}>
                         <Phone className="w-5 h-5" />
                       </button>
                       <button className={`p-3 rounded-xl transition-all ${
-                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
                       }`}>
                         <Video className="w-5 h-5" />
                       </button>
                       <button className={`p-3 rounded-xl transition-all ${
-                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
                       }`}>
                         <MoreHorizontal className="w-5 h-5" />
                       </button>
@@ -479,8 +479,8 @@ const EmployeeMessages: React.FC = () => {
 
                 {/* Messages Area */}
                 <div className={`flex-1 rounded-2xl ${
-                  darkMode ? 'bg-gray-800' : 'bg-white'
-                } shadow-lg overflow-y-auto p-6`}>
+                  darkMode ? 'bg-gray-800' : 'bg-white shadow-lg'
+                } overflow-y-auto p-6`}>
                   <div className="space-y-4">
                     {currentMessages.map(message => (
                       <MessageBubble key={message.id} message={message} />
@@ -490,15 +490,15 @@ const EmployeeMessages: React.FC = () => {
 
                 {/* Message Input */}
                 <div className={`mt-4 rounded-2xl p-4 ${
-                  darkMode ? 'bg-gray-800' : 'bg-white'
-                } shadow-lg`}>
+                  darkMode ? 'bg-gray-800' : 'bg-white shadow-lg'
+                }`}>
                   <div className="flex items-end gap-3">
                     {/* Attachment Button */}
                     <div className="relative">
                       <button
                         onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
                         className={`p-3 rounded-xl transition-all ${
-                          darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                          darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
                         }`}
                       >
                         <Paperclip className="w-5 h-5" />
@@ -550,7 +550,7 @@ const EmployeeMessages: React.FC = () => {
                         className={`w-full px-4 py-3 rounded-xl resize-none outline-none transition-all ${
                           darkMode
                             ? 'bg-gray-700 text-white placeholder-gray-400'
-                            : 'bg-gray-50 text-gray-900 placeholder-gray-500'
+                            : 'bg-gray-100 text-gray-900 placeholder-gray-500'
                         }`}
                         onKeyPress={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
@@ -564,12 +564,12 @@ const EmployeeMessages: React.FC = () => {
                     {/* Action Buttons */}
                     <div className="flex items-center gap-2">
                       <button className={`p-3 rounded-xl transition-all ${
-                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
                       }`}>
                         <Mic className="w-5 h-5" />
                       </button>
                       <button className={`p-3 rounded-xl transition-all ${
-                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                        darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-200'
                       }`}>
                         <Smile className="w-5 h-5" />
                       </button>
@@ -583,7 +583,7 @@ const EmployeeMessages: React.FC = () => {
                               : 'bg-gray-300 text-gray-500'
                             : darkMode
                             ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                            : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white'
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
                         }`}
                       >
                         <Send className="w-5 h-5" />
@@ -595,8 +595,8 @@ const EmployeeMessages: React.FC = () => {
             ) : (
               /* Empty State */
               <div className={`flex-1 rounded-2xl flex items-center justify-center ${
-                darkMode ? 'bg-gray-800' : 'bg-white'
-              } shadow-lg`}>
+                darkMode ? 'bg-gray-800' : 'bg-white shadow-lg'
+              }`}>
                 <div className="text-center">
                   <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     darkMode ? 'bg-gray-700' : 'bg-gray-100'
