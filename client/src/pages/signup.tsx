@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Card, CardHeader, CardFooter, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input"; 
 import { Textarea } from "@/components/ui/textarea";
 /*  */import { Label, labelVariants } from "@/components/ui/label";
 import { useNavigate, Link } from "react-router-dom";
@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "../contexts/AuthContext";
 import { apiFetch } from "@/lib/api";
 import { normalizeUserType } from "@/lib/utils";
+import { useLocation } from "react-router-dom";
 import { Eye, EyeOff, User as UserIcon, Building } from "lucide-react";
 
 type Role = "employee" | "employer";
@@ -36,6 +37,7 @@ export default function Signup() {
   const { toast } = useToast();
   const auth = useAuth(); // expects { user, setUser, logout, ... }
   const user = auth.user;
+  const location = useLocation();
 
   const [open, setOpen] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -43,6 +45,7 @@ export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
+  const [infoMessage, setInfoMessage] = useState<string | null>(location.state?.message || null);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [form, setForm] = useState({
     email: "",
@@ -526,9 +529,12 @@ export default function Signup() {
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.24 }}
+        transition={{ duration: 0.24 }} 
         className="relative z-10 w-full max-w-4xl mx-auto"
       >
+        {infoMessage && (
+          <div className="mb-4 text-center text-green-600 dark:text-green-400 font-semibold bg-green-100 dark:bg-green-900/50 p-3 rounded-xl">{infoMessage}</div>
+        )}
   <Card className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
           <div className="flex flex-col lg:flex-row">
             <div className="hidden lg:flex lg:w-1/3 items-center justify-center bg-gradient-to-br from-blue-600 to-purple-600 p-10">
