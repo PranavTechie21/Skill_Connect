@@ -19,10 +19,56 @@ const Dashboards = () => {
   const [quickStatsData, setQuickStatsData] = useState({ totalUsers: 0, activeJobs: 0, applicationsToday: 0, successfulMatches: 0 });
   const [topJobListingsData, setTopJobListingsData] = useState([]);
 
+  const useMockData = () => {
+    console.warn("API failed. Falling back to mock data for dashboard.");
+    setUserGrowthData([
+      { month: 'Jan', users: 65 }, { month: 'Feb', users: 99 }, { month: 'Mar', users: 150 },
+      { month: 'Apr', users: 121 }, { month: 'May', users: 176 }, { month: 'Jun', users: 195 },
+    ]);
+    setJobCategoriesData([
+      { name: 'Technology', value: 400 }, { name: 'Marketing', value: 300 },
+      { name: 'Sales', value: 300 }, { name: 'Design', value: 200 },
+    ]);
+    setApplicationStatusData([
+      { name: 'Accepted', value: 550 }, { name: 'Rejected', value: 50 },
+      { name: 'Pending', value: 200 }, { name: 'Interview', value: 375 },
+    ]);
+    setEngagementData([
+      { day: 'Mon', messages: 100, applications: 50 }, { day: 'Tue', messages: 120, applications: 60 },
+      { day: 'Wed', messages: 90, applications: 45 }, { day: 'Thu', messages: 150, applications: 70 },
+      { day: 'Fri', messages: 180, applications: 90 },
+    ]);
+    setQuickStatsData({
+      totalUsers: 5432,
+      activeJobs: 123,
+      applicationsToday: 89,
+      successfulMatches: 45,
+    });
+    setTopJobListingsData([
+      { title: 'Frontend Developer', views: 5000, applications: 150 },
+      { title: 'Backend Developer', views: 4500, applications: 120 },
+      { title: 'UI/UX Designer', views: 3000, applications: 90 },
+      { title: 'Data Scientist', views: 2500, applications: 70 },
+      { title: 'Product Manager', views: 2000, applications: 60 },
+    ]);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const response = await fetch("/api/dashboard");
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to fetch dashboard data: ${response.status} ${errorText}`);
+        }
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const responseText = await response.text();
+          console.error("Non-JSON response received:", responseText);
+          throw new TypeError(`Expected JSON response but received ${contentType}. Response body: ${responseText.substring(0, 200)}...`);
+        }
+
         const data = await response.json();
         setUserGrowthData(data.userGrowthData);
         setJobCategoriesData(data.jobCategoriesData);
@@ -32,6 +78,7 @@ const Dashboards = () => {
         setTopJobListingsData(data.topJobListingsData);
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        useMockData(); // Use mock data on API failure
       }
     };
 
@@ -186,7 +233,17 @@ const Dashboards = () => {
                 <CardTitle>Application Status</CardTitle>
               </CardHeader>
               <CardContent>
-                {renderPieChart(applicationStatusData)}
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={applicationStatusData} layout="vertical" margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={80} tick={{ fontSize: 12 }} />
+                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', color: '#333' }} />
+                    <Bar dataKey="value" fill="#82ca9d">
+                      {applicationStatusData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
 
@@ -275,7 +332,17 @@ const Dashboards = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {renderPieChart(jobCategoriesData)}
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={jobCategoriesData}>
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.95)', color: '#333' }} />
+                    <Bar dataKey="value">
+                      {jobCategoriesData.map((entry, index) => (<Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
               </CardContent>
             </Card>
           </motion.div>
@@ -334,17 +401,17 @@ const Dashboards = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {renderPieChart(applicationStatusData)}
-                <div className="grid grid-cols-2 gap-4 mt-6">
+                <div className="space-y-4">
                   {applicationStatusData.map((status, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: COLORS[index % COLORS.length] }}
-                      />
-                      <span>
-                        {status.name}: {status.value}
-                      </span>
+                    <div key={index} className="flex items-center">
+                      <div className="w-24 text-sm text-left text-gray-500">{status.name}</div>
+                      <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-4">
+                        <div
+                          className="h-4 rounded-full"
+                          style={{ width: `${(status.value / applicationStatusData.reduce((acc, s) => acc + s.value, 0)) * 100}%`, backgroundColor: COLORS[index % COLORS.length] }}
+                        />
+                      </div>
+                      <div className="w-12 text-right text-sm font-semibold">{status.value}</div>
                     </div>
                   ))}
                 </div>
