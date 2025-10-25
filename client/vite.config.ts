@@ -9,6 +9,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src")
     }
   },
+  build: {
+    rollupOptions: {
+      external: ['*.mp4']
+    }
+  },
   server: {
     port: 5173,
     proxy: {
@@ -28,6 +33,13 @@ export default defineConfig({
         }
       }
     },
+    headers: {
+      'Accept-Ranges': 'bytes'
+    },
     cors: false
+  },
+  assetsInclude: ['.mp4'],
+  optimizeDeps: {
+    exclude: ['*.mp4']
   }
 });

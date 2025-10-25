@@ -166,9 +166,8 @@ export default function Home() {
                   onError={handleVideoError}
                   preload="auto"
                   poster="/images/tea_vendor.jpg"
-                  key={Date.now()}
                 >
-                  <source src={`/images/Chai_making_video.mp4?v=${Date.now()}`} type="video/mp4" />
+                  <source src="/images/Chai_making_video.mp4" type="video/mp4" />
                   <div className="text-white text-center p-4">
                     Video not supported? <a href="/images/Chai_making_video.mp4" className="underline">Download here</a>
                   </div>
