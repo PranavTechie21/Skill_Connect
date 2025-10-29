@@ -2,8 +2,22 @@ import React, { useState, useEffect } from 'react';
 import AdminBackButton from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import { Building2, Search, Plus, Edit, Trash2, MoreVertical, Mail, Calendar, MapPin, Users, TrendingUp, Eye, Award, Briefcase, Globe } from 'lucide-react';
-import { adminService } from '@/lib/admin-service';
+import { useAuth } from '@/contexts/AuthContext';
+import { adminService, type User } from '@/lib/admin-service';
+import { apiFetch } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Company {
   id: string;
@@ -22,6 +36,7 @@ interface Company {
 }
 
 export default function Employers() {
+  const { user } = useAuth();
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -29,6 +44,23 @@ export default function Employers() {
   const { toast } = useToast();
   const { theme } = useTheme();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newCompany, setNewCompany] = useState({
+    name: '',
+    industry: '',
+    location: '',
+    website: '',
+    size: '',
+    description: '',
+    contactEmail: '', // Added contactEmail
+  });
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setNewCompany((prev) => ({ ...prev, [id]: value }));
+  };
 
   const fetchCompanies = async () => {
     setLoading(true);
@@ -62,6 +94,63 @@ export default function Employers() {
   useEffect(() => {
     fetchCompanies();
   }, []);
+
+  const handleAddCompany = async () => {
+    setFormLoading(true);
+    setFormError(null);
+
+    if (!user) {
+      setFormError('You must be logged in to add a company.');
+      setFormLoading(false);
+      return;
+    }
+
+    if (!newCompany.name) {
+      setFormError('Company Name is required.');
+      setFormLoading(false);
+      return;
+    }
+    // Added validation for contactEmail
+    if (!newCompany.contactEmail) {
+      setFormError('Company Name is required.');
+      setFormLoading(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        ...newCompany,
+        ownerId: parseInt(user.id, 10), // Convert user.id from string to number
+      };
+
+      const response = await apiFetch('/api/companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error('Failed to create company');
+
+      toast({ title: "Success", description: "Company added successfully." });
+      setIsModalOpen(false);
+      setNewCompany({
+        name: '',
+        industry: '',
+        location: '',
+        website: '',
+        size: '',
+        description: '',
+        contactEmail: '', // Reset contactEmail
+      });
+      fetchCompanies(); // Refresh the list
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setFormError(errorMessage);
+      console.error('Error adding company:', errorMessage);
+      toast({ title: "Error", description: `Failed to add company: ${errorMessage}`, variant: "destructive" });
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const filteredCompanies = companies.filter(company => {
     const matchesSearch = company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -98,10 +187,79 @@ export default function Employers() {
                 <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>Manage and monitor registered employers</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg shadow-purple-900/20">
-              <Plus className="w-5 h-5" />
-              Add Company
-            </button>
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all shadow-lg shadow-purple-900/20">
+                  <Plus className="w-5 h-5" />
+                  Add Company
+                </button>
+              </DialogTrigger>
+              <DialogContent 
+                className={`sm:max-w-[425px] ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'}`}
+                onInteractOutside={(e) => e.preventDefault()}
+              >
+                <DialogHeader>
+                  <DialogTitle>Add New Company</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details for the new company. Click save when you're done.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  {formError && <p className="text-red-500 text-sm">{formError}</p>}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="name" className="text-right">
+                      Name
+                    </Label>
+                    <Input id="name" value={newCompany.name} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="industry" className="text-right">
+                      Industry
+                    </Label>
+                    <Input id="industry" value={newCompany.industry} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="location" className="text-right">
+                      Location
+                    </Label>
+                    <Input id="location" value={newCompany.location} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="website" className="text-right">
+                      Website
+                    </Label>
+                    <Input id="website" value={newCompany.website} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="size" className="text-right">
+                      Size
+                    </Label>
+                    <Input id="size" value={newCompany.size} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="contactEmail" className="text-right">
+                      Contact Email
+                    </Label>
+                    <Input id="contactEmail" type="email" value={newCompany.contactEmail} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="description" className="text-right pt-2">
+                      Description
+                    </Label>
+                    <Textarea id="description" value={newCompany.description} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <button type="submit" onClick={handleAddCompany} disabled={formLoading} className={`px-4 py-2 rounded-md text-white transition-colors ${
+                    formLoading ? 'bg-purple-400 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'
+                  }`}>
+                    {formLoading ? 'Adding...' : 'Save Company'}
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
           </div>
         </div>
       </div>

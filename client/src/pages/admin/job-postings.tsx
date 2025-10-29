@@ -1,11 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import AdminBackButton from '@/components/AdminBackButton';
 import {
-  Briefcase, Search, Plus, Edit, Trash2, MoreVertical, MapPin, Calendar, DollarSign, Users, Clock, Eye, Building2, TrendingUp, Filter, CheckCircle, XCircle, PauseCircle
+  Briefcase, Search, Plus, Edit, Trash2, MoreVertical, DollarSign, MapPin, Building2, Users, CheckCircle, XCircle, Clock, Filter, Pause, Play, Save, TrendingUp, Eye, PauseCircle
 } from 'lucide-react';
 import { useTheme } from '@/components/theme-provider';
 import { adminService } from '@/lib/admin-service';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface CompanyForSelect {
+  id: string;
+  name: string;
+}
 
 interface Job {
   id: number;
@@ -25,11 +45,76 @@ export default function JobPostings() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('All Status');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [companies, setCompanies] = useState<CompanyForSelect[]>([]);
+  const [newJob, setNewJob] = useState({
+    title: '',
+    description: '',
+    requirements: '',
+    location: '',
+    jobType: 'Full-time',
+    salaryMin: '',
+    salaryMax: '',
+    companyId: '',
+  });
   
   const { theme } = useTheme();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
 
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target;
+    setNewJob(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setNewJob(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handlePostJob = async () => {
+    setFormLoading(true);
+    setFormError(null);
+
+    if (!newJob.title || !newJob.companyId) {
+      setFormError('Job Title and Company are required.');
+      setFormLoading(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        ...newJob,
+        employerId: user?.id,
+        salaryMin: newJob.salaryMin ? parseInt(newJob.salaryMin, 10) : undefined,
+        salaryMax: newJob.salaryMax ? parseInt(newJob.salaryMax, 10) : undefined,
+      };
+
+      const response = await apiFetch('/api/jobs', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to post job.');
+      }
+
+      toast({ title: "Success", description: "Job posted successfully." });
+      setIsModalOpen(false);
+      setNewJob({ title: '', description: '', requirements: '', location: '', jobType: 'Full-time', salaryMin: '', salaryMax: '', companyId: '' });
+      fetchJobs(); // Refresh the list
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setFormError(errorMessage);
+      toast({ title: "Error", description: `Failed to post job: ${errorMessage}`, variant: "destructive" });
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const fetchJobs = async () => {
     setLoading(true);
@@ -60,6 +145,16 @@ export default function JobPostings() {
 
   useEffect(() => {
     fetchJobs();
+    const fetchCompaniesForSelect = async () => {
+      try {
+        const companiesData = await adminService.getCompanies();
+        setCompanies(companiesData.map((c: any) => ({ id: c.id, name: c.name })));
+      } catch (error) {
+        console.error("Failed to fetch companies for select:", error);
+        toast({ title: "Error", description: "Could not load companies for the form.", variant: "destructive" });
+      }
+    };
+    fetchCompaniesForSelect();
   }, []);
 
   const filteredJobs = jobs.filter(job => {
@@ -98,10 +193,84 @@ export default function JobPostings() {
                 <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>Create and manage jobs posted by admin team</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-3 rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg shadow-orange-900/20">
-              <Plus className="w-5 h-5" />
-              Post New Job
-            </button>
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-3 rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg shadow-orange-900/20">
+                  <Plus className="w-5 h-5" />
+                  Post New Job
+                </button>
+              </DialogTrigger>
+              <DialogContent className={`sm:max-w-2xl ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'}`}>
+                <DialogHeader>
+                  <DialogTitle>Post a New Job</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details for the new job posting.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4 max-h-[70vh] overflow-y-auto pr-4">
+                  {formError && <p className="text-red-500 text-sm">{formError}</p>}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="title" className="text-right">Title</Label>
+                    <Input id="title" value={newJob.title} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="companyId" className="text-right">Company</Label>
+                    <Select onValueChange={(value) => handleSelectChange('companyId', value)} value={newJob.companyId}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select a company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {companies.map(company => (
+                          <SelectItem key={company.id} value={company.id.toString()}>{company.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="location" className="text-right">Location</Label>
+                    <Input id="location" value={newJob.location} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="jobType" className="text-right">Job Type</Label>
+                    <Select onValueChange={(value) => handleSelectChange('jobType', value)} value={newJob.jobType}>
+                      <SelectTrigger className="col-span-3">
+                        <SelectValue placeholder="Select job type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Full-time">Full-time</SelectItem>
+                        <SelectItem value="Part-time">Part-time</SelectItem>
+                        <SelectItem value="Contract">Contract</SelectItem>
+                        <SelectItem value="Internship">Internship</SelectItem>
+                        <SelectItem value="Remote">Remote</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="salaryMin" className="text-right">Salary Range</Label>
+                    <div className="col-span-3 grid grid-cols-2 gap-2">
+                      <Input id="salaryMin" type="number" placeholder="Min" value={newJob.salaryMin} onChange={handleInputChange} />
+                      <Input id="salaryMax" type="number" placeholder="Max" value={newJob.salaryMax} onChange={handleInputChange} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="description" className="text-right pt-2">Description</Label>
+                    <Textarea id="description" value={newJob.description} onChange={handleInputChange} className="col-span-3" rows={4} />
+                  </div>
+                  <div className="grid grid-cols-4 items-start gap-4">
+                    <Label htmlFor="requirements" className="text-right pt-2">Requirements</Label>
+                    <Textarea id="requirements" value={newJob.requirements} onChange={handleInputChange} className="col-span-3" rows={4} />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <button type="submit" onClick={handlePostJob} disabled={formLoading} className={`flex items-center gap-2 px-6 py-3 rounded-lg text-white transition-colors ${
+                    formLoading ? 'bg-orange-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'
+                  }`}>
+                    <Save className="w-5 h-5" />
+                    {formLoading ? 'Posting...' : 'Post Job'}
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

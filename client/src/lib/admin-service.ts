@@ -187,6 +187,22 @@ export const adminService = {
     return safeJsonResponse(response);
   },
 
+  // Story Management
+  getStories: async () => {
+    const response = await apiFetch('/api/admin/stories', { method: 'GET' });
+    return safeJsonResponse(response);
+  },
+
+  updateStory: async (id: string, data: any) => {
+    const response = await apiFetch(`/api/admin/stories/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+    return safeJsonResponse(response);
+  },
+
+  deleteStory: async (id: string) => {
+    const response = await apiFetch(`/api/admin/stories/${id}`, { method: 'DELETE' });
+    if (!response.ok) throw new Error('Failed to delete story');
+  },
+
   // Analytics
   getAnalytics: async (timeRange: string): Promise<AdminAnalyticsData> => {
     const response = await apiFetch(`/api/admin/analytics?timeRange=${timeRange}`, { method: 'GET' });

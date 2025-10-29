@@ -3,7 +3,7 @@ import { useTheme } from '@/components/theme-provider';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import {
-  Shield, Users, Building2, Briefcase, TrendingUp, Activity, Settings, IndianRupee,
+  Shield, Users, Building2, Briefcase, TrendingUp, Activity, Settings, BookOpen,
   LogOut, Moon, Sun, Menu, X, Search, MoreVertical, Eye, Edit, Link as LinkIcon,
   Trash2, CheckCircle, XCircle, AlertCircle, Clock, Mail, Phone,
   Calendar, BarChart3, FileText, UserCheck, Pause, Play, Ban, ChevronDown, ArrowRight, Zap, Target, Award, MessageSquare, Bell, Home, DollarSign, TrendingDown
@@ -498,6 +498,7 @@ const AdminDashboard: React.FC = () => {
                   <NavItem icon={Briefcase} label="Job Postings" id="jobs" badge={stats.newJobsThisWeek} />
                   <NavItem icon={FileText} label="Applications" id="applications" />
                   <NavItem icon={AlertCircle} label="Approvals" id="approvals" badge={stats.pendingApprovals} />
+                  <NavItem icon={BookOpen} label="Success Stories" id="stories" />
                   <NavItem icon={BarChart3} label="Analytics" id="analytics" />
                   <NavItem icon={Settings} label="System Settings" id="settings" />
                 </div>

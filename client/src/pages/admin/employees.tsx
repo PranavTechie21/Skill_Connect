@@ -2,8 +2,19 @@ import React, { useState, useEffect } from 'react';
 import AdminBackButton from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import { Users, Search, Plus, Edit, Trash2, MoreVertical, Mail, Calendar, MapPin, Briefcase, Award, TrendingUp, Clock, Filter, Eye, CheckCircle, XCircle } from 'lucide-react';
-import { adminService, User } from '@/lib/admin-service';
+import { adminService, User, CreateUserData, AdminStats } from '@/lib/admin-service';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function AdminEmployees() {
   const { theme } = useTheme();
@@ -12,12 +23,54 @@ export default function AdminEmployees() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [newEmployee, setNewEmployee] = useState<Omit<CreateUserData, 'userType'>>({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+  });
+  const [statsData, setStatsData] = useState<Partial<AdminStats>>({
+    totalUsers: 0,
+    totalApplications: 0,
+    newUsersThisWeek: 0,
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setNewEmployee((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleAddEmployee = async () => {
+    setFormLoading(true);
+    setFormError(null);
+    if (!newEmployee.email || !newEmployee.password || !newEmployee.firstName || !newEmployee.lastName) {
+      setFormError('All fields are required.');
+      setFormLoading(false);
+      return;
+    }
+
+    try {
+      await adminService.createUser({ ...newEmployee, userType: 'job_seeker' });
+      toast({ title: "Success", description: "Employee created successfully." });
+      setIsModalOpen(false);
+      setNewEmployee({ email: '', password: '', firstName: '', lastName: '' });
+      fetchEmployees(); // Refresh the list
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred.';
+      setFormError(errorMessage);
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const fetchEmployees = async () => {
     setLoading(true);
     try {
       const allUsers = await adminService.getUsers();
-      // Assuming 'Professional' userType are employees
+      // Filter for 'Professional' as they represent the employees/professionals on the platform
       setEmployees(allUsers.filter(u => u.userType === 'Professional'));
     } catch (error) {
       console.error("Failed to fetch employees:", error);
@@ -27,23 +80,34 @@ export default function AdminEmployees() {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const data = await adminService.getStats();
+      setStatsData(data);
+    } catch (error) {
+      console.error("Failed to fetch stats:", error);
+      toast({ title: "Error", description: "Could not fetch statistics.", variant: "destructive" });
+    }
+  };
+
   useEffect(() => {
     fetchEmployees();
+    fetchStats();
   }, []);
 
   const stats = [
-    { label: 'Total Employees', value: employees.length, change: '↑ 12 new this week', icon: Users, color: 'bg-green-500', bgLight: 'bg-green-50' },
+    { label: 'Total Employees', value: statsData.totalUsers || employees.length, change: `↑ ${statsData.newUsersThisWeek || 0} new this week`, icon: Users, color: 'bg-green-500', bgLight: 'bg-green-50' },
     { label: 'Active Users', value: employees.length, change: '100% active rate', icon: CheckCircle, color: 'bg-blue-500', bgLight: 'bg-blue-50' },
-    { label: 'Job Applications', value: '1,234', change: '↑ 45 this month', icon: Briefcase, color: 'bg-purple-500', bgLight: 'bg-purple-50' },
-    { label: 'Profile Views', value: '8,421', change: '↑ 324 today', icon: Eye, color: 'bg-orange-500', bgLight: 'bg-orange-50' }
+    { label: 'Job Applications', value: statsData.totalApplications?.toLocaleString() || '0', change: 'Across all users', icon: Briefcase, color: 'bg-purple-500', bgLight: 'bg-purple-50' },
+    { label: 'Profile Views', value: 'N/A', change: 'Metric not available', icon: Eye, color: 'bg-orange-500', bgLight: 'bg-orange-50' }
   ];
 
   const filteredEmployees = employees.filter(employee => {
     const name = `${employee.firstName} ${employee.lastName}`;
-    const matchesSearch = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (employee.location || '').toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
+    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+           (employee.location && employee.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
+           (employee.title && employee.title.toLowerCase().includes(searchTerm.toLowerCase()));
   });
 
   return (
@@ -62,10 +126,59 @@ export default function AdminEmployees() {
                 <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>Manage and monitor employee accounts</p>
               </div>
             </div>
-            <button className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-lg shadow-green-200/20">
-              <Plus className="w-5 h-5" />
-              Add Employee
-            </button>
+            <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <DialogTrigger asChild>
+                <button className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-lg shadow-green-200/20">
+                  <Plus className="w-5 h-5" />
+                  Add Employee
+                </button>
+              </DialogTrigger>
+              <DialogContent 
+                className={`sm:max-w-[425px] ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'}`}
+                onInteractOutside={(e) => e.preventDefault()}
+              >
+                <DialogHeader>
+                  <DialogTitle>Add New Employee</DialogTitle>
+                  <DialogDescription>
+                    Create a new employee account. They will be able to log in with these credentials.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  {formError && <p className="text-red-500 text-sm">{formError}</p>}
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="firstName" className="text-right">
+                      First Name
+                    </Label>
+                    <Input id="firstName" value={newEmployee.firstName} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="lastName" className="text-right">
+                      Last Name
+                    </Label>
+                    <Input id="lastName" value={newEmployee.lastName} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="email" className="text-right">
+                      Email
+                    </Label>
+                    <Input id="email" type="email" value={newEmployee.email} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                  <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="password" className="text-right">
+                      Password
+                    </Label>
+                    <Input id="password" type="password" value={newEmployee.password} onChange={handleInputChange} className="col-span-3" />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <button type="submit" onClick={handleAddEmployee} disabled={formLoading} className={`px-4 py-2 rounded-md text-white transition-colors ${
+                    formLoading ? 'bg-green-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+                  }`}>
+                    {formLoading ? 'Creating...' : 'Create Employee'}
+                  </button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>
@@ -164,7 +277,7 @@ export default function AdminEmployees() {
                 }`}>
                   <div>
                     <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-1`}>Applications</p>
-                    <p className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{employee.applications || 0}</p>
+                    <p className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>N/A</p>
                   </div>
                   <div>
                     <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'} mb-1`}>Joined</p>

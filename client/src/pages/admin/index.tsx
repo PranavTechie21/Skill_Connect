@@ -9,6 +9,7 @@ import Analytics from './analytics';
 import AdminEmployees from './employees';
 import AdminApplications from './applications';
 import AdminApprovals from './approvals';
+import AdminStories from './success-stories';
 
 export default function AdminRoutes() {
   return (
@@ -21,6 +22,7 @@ export default function AdminRoutes() {
   <Route path="applications" element={<AdminApplications />} />
   <Route path="approvals" element={<AdminApprovals />} />
   <Route path="employees" element={<AdminEmployees />} />
+  <Route path="stories" element={<AdminStories />} />
   <Route path="settings" element={<AdminSettings />} />
       <Route path="*" element={<Navigate to="/admin" replace />} />
     </Routes>

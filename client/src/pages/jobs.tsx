@@ -95,7 +95,7 @@ const getJobIcon = (jobTitle: string) => {
 // Animated Counter Component
 const AnimatedCounter = ({
   value,
-  duration = 2000,
+  duration = 200,
 }: {
   value: number;
   duration?: number;
@@ -223,7 +223,7 @@ export default function Jobs() {
         return { jobs: [], totalCount: 0 };
       }
     },
-    staleTime: 10 * 60 * 1000,
+    staleTime: 10 * 60 * 100,
   });
 
   // Fetch paginated jobs
@@ -256,7 +256,7 @@ export default function Jobs() {
         throw err;
       }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 5 * 60 * 100,
   });
 
   // Calculate overall stats
@@ -322,7 +322,7 @@ export default function Jobs() {
       label: "Avg Salary",
       value: overallStats.avgSalary,
       color: "orange",
-      delay: 0.3,
+      delay: 0.0,
       isCurrency: true,
     },
   ];
