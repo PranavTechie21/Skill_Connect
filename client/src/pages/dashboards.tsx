@@ -12,12 +12,17 @@ const Dashboards = () => {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#AF19FF', '#FF1943'];
 
 
-  const [userGrowthData, setUserGrowthData] = useState([]);
-  const [jobCategoriesData, setJobCategoriesData] = useState([]);
-  const [applicationStatusData, setApplicationStatusData] = useState([]);
-  const [engagementData, setEngagementData] = useState([]);
+  const [userGrowthData, setUserGrowthData] = useState<{ month: string; users: number; }[]>([]);
+  const [jobCategoriesData, setJobCategoriesData] = useState<{ name: string; value: number; }[]>([]);
+  const [applicationStatusData, setApplicationStatusData] = useState<{ name: string; value: number; }[]>([]);
+  const [engagementData, setEngagementData] = useState<{ day: string; messages: number; applications: number; }[]>([]);
   const [quickStatsData, setQuickStatsData] = useState({ totalUsers: 0, activeJobs: 0, applicationsToday: 0, successfulMatches: 0 });
-  const [topJobListingsData, setTopJobListingsData] = useState([]);
+  interface TopJobListing {
+    title: string;
+    views: number;
+    applications: number;
+  }
+  const [topJobListingsData, setTopJobListingsData] = useState<TopJobListing[]>([]);
 
   const useMockData = () => {
     console.warn("API failed. Falling back to mock data for dashboard.");

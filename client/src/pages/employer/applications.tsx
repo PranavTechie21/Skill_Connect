@@ -183,7 +183,7 @@ export default function Applications() {
        app.position.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
-      if (sortBy === 'recent') return new Date(b.appliedDate) - new Date(a.appliedDate);
+      if (sortBy === 'recent') return new Date(b.appliedDate).getTime() - new Date(a.appliedDate).getTime();
       if (sortBy === 'match') return b.matchScore - a.matchScore;
       if (sortBy === 'salary') return parseInt(b.expectedSalary.replace(/[^0-9]/g, '')) - parseInt(a.expectedSalary.replace(/[^0-9]/g, ''));
       return 0;

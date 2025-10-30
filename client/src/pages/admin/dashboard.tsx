@@ -110,7 +110,7 @@ const AdminDashboard: React.FC = () => {
   const handleViewUser = async (user: any) => {
     try {
       // Fetch complete user details from backend
-      const userDetails = await adminService.getUserById(user.id);
+      const userDetails = await adminService.getUser(user.id);
       setSelectedUser(userDetails);
     } catch (error) {
       console.error("Failed to fetch user details:", error);
@@ -163,8 +163,23 @@ const AdminDashboard: React.FC = () => {
 
   const handleViewJob = async (job: any) => {
     try {
-      // Fetch complete job details from backend
-      const jobDetails = await adminService.getJobById(job.id);
+      // Fetch complete job details from backend (use getJob if available, otherwise fall back to getJobs and find)
+      const svc: any = adminService;
+      let jobDetails: any = null;
+
+      if (typeof svc.getJob === 'function') {
+        jobDetails = await svc.getJob(job.id);
+      } else if (typeof svc.getJobs === 'function') {
+        const jobs = await svc.getJobs();
+        jobDetails = (jobs || []).find((j: any) => String(j.id) === String(job.id));
+      } else {
+        throw new Error('No method available on adminService to fetch job details');
+      }
+
+      if (!jobDetails) {
+        throw new Error('Job not found');
+      }
+
       setSelectedJob(jobDetails);
     } catch (error) {
       console.error("Failed to fetch job details:", error);
@@ -175,7 +190,18 @@ const AdminDashboard: React.FC = () => {
   const handleToggleJobStatus = async (job: any) => {
     try {
       const newStatus = job.status === 'active' ? 'paused' : 'active';
-      await adminService.updateJobStatus(job.id, newStatus);
+      const svc: any = adminService;
+
+      // Prefer a dedicated updateJobStatus method if present, otherwise fall back to a generic updateJob
+      if (typeof svc.updateJobStatus === 'function') {
+        await svc.updateJobStatus(job.id, newStatus);
+      } else if (typeof svc.updateJob === 'function') {
+        await svc.updateJob(job.id, { status: newStatus });
+      } else {
+        // If no suitable method exists at runtime, surface a clear error
+        throw new Error('No method available on adminService to update job status');
+      }
+
       toast({ title: "Success", description: `Job ${newStatus === 'active' ? 'activated' : 'paused'} successfully.` });
       loadJobs();
     } catch (error) {

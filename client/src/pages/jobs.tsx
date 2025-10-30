@@ -23,6 +23,7 @@ import {
   Database,
   Smartphone,
   Cloud,
+  LucideIcon,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api";
@@ -799,4 +800,12 @@ export default function Jobs() {
       </div>
     </div>
   );
+}
+
+interface JobCardProps {
+  job: any;
+  icon?: LucideIcon;
+  className?: string;
+  hideDaysAgo?: boolean;
+  applyButtonSize?: string;
 }

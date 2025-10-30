@@ -140,12 +140,12 @@ export default function Signup() {
 
   const next = async () => {
     const fieldsToValidate: (keyof SignupFormData)[][] = [
-      ["email", "password", "confirmPassword"],
-      ["firstName", "lastName", "userType"],
-      form.getValues("userType") === "employer"
-        ? ["companyName", "location", "telephoneNumber"]
-        : [],
-    ];
+        ["email", "password", "confirmPassword"],
+        ["firstName", "lastName", "userType"],
+        form.getValues("userType") === "employer"
+          ? ["companyName", "location", "telephoneNumber"] as (keyof SignupFormData)[]
+          : [],
+      ];
 
     const isValid = await form.trigger(fieldsToValidate[step]);
     if (!isValid) return;
@@ -175,15 +175,15 @@ export default function Signup() {
         userType: mapUserType(data.userType),
         location: data.location?.trim() || undefined,
         ...(data.userType === 'employee' && {
-          title: data.title?.trim() || undefined,
-          bio: data.bio?.trim() || undefined,
-          skills: data.skills ? data.skills.split(",").map(s => s.trim()).filter(Boolean) : [],
+          title: 'title' in data ? data.title?.trim() || undefined : undefined,
+          bio: 'bio' in data ? data.bio?.trim() || undefined : undefined,
+          skills: 'skills' in data && data.skills ? data.skills.split(",").map(s => s.trim()).filter(Boolean) : [],
         }),
         ...(data.userType === 'employer' && {
-          companyName: data.companyName?.trim() || undefined,
-          companyWebsite: data.companyWebsite?.trim() || undefined,
-          companyBio: data.companyBio?.trim() || undefined,
-          telephoneNumber: data.telephoneNumber?.trim() || undefined,
+          companyName: 'companyName' in data ? data.companyName?.trim() || undefined : undefined,
+          companyWebsite: 'companyWebsite' in data ? data.companyWebsite?.trim() || undefined : undefined,
+          companyBio: 'companyBio' in data ? data.companyBio?.trim() || undefined : undefined,
+          telephoneNumber: 'telephoneNumber' in data ? data.telephoneNumber?.trim() || undefined : undefined,
         }),
       };
 
@@ -287,8 +287,6 @@ export default function Signup() {
       <div>
         <Label>Email</Label>
         <Input
-          value={form.email}
-          onChange={e => update({ email: e.target.value })}
           {...form.register("email")}
           placeholder="you@example.com"
         />
@@ -300,8 +298,6 @@ export default function Signup() {
         <Label>Password</Label>
         <div className="relative">
           <Input
-            value={form.password}
-            onChange={e => update({ password: e.target.value })}
             {...form.register("password")}
             type={showPassword ? "text" : "password"}
             placeholder="At least 6 characters"
@@ -321,8 +317,6 @@ export default function Signup() {
         <Label>Confirm Password</Label>
         <div className="relative">
           <Input
-            value={form.confirmPassword}
-            onChange={e => update({ confirmPassword: e.target.value })}
             {...form.register("confirmPassword")}
             type={showConfirmPassword ? "text" : "password"}
             placeholder="Repeat your password"
@@ -362,7 +356,7 @@ export default function Signup() {
               <button
                 key={r}
                 type="button"
-                onClick={() => update({ userType: r })}
+                onClick={() => form.setValue("userType", r)}
                 role="radio"
                 aria-checked={active}
                 aria-pressed={active}

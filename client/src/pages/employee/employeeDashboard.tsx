@@ -333,20 +333,20 @@ const EmployeeDashboard: React.FC = () => {
           </div>
           
           <div className="flex flex-wrap gap-2 mb-4">
-            {job.skills.slice(0, 3).map(skill => (
+            {(job.skills ?? []).slice(0, 3).map(skill => (
               <span key={skill} className={`px-3 py-1.5 text-xs font-semibold rounded-lg border ${
                 darkMode 
                   ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
                   : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border-blue-100'
               }`}>
                 {skill}
-              </span> ?? null
+              </span>
             ))}
-            {job.skills.length > 3 && (
+            {(job.skills ?? []).length > 3 && (
               <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${
                 darkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-600'
               }`}>
-                +{job.skills.length - 3} more
+                +{(job.skills ?? []).length - 3} more
               </span>
             )}
           </div>

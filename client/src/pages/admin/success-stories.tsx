@@ -7,7 +7,20 @@ const SuccessStoriesAdmin = () => {
   const { theme: currentTheme } = useTheme();
   const darkMode = currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   
-  const [stories, setStories] = useState([
+  interface Story {
+    id: number;
+    name: string;
+    email: string;
+    title: string;
+    story: string;
+    tags: string;
+    type: 'employee' | 'employer' | string;
+    date: string;
+    status: 'pending' | 'approved' | 'rejected' | string;
+    initials: string;
+  }
+
+  const initialStories: Story[] = [
     {
       id: 1,
       name: "Sarah Johnson",
@@ -68,26 +81,28 @@ const SuccessStoriesAdmin = () => {
       status: "rejected",
       initials: "JW"
     }
-  ]);
+  ];
 
-  const [selectedStory, setSelectedStory] = useState(null);
+  const [stories, setStories] = useState<Story[]>(initialStories);
+
+  const [selectedStory, setSelectedStory] = useState<Story | null>(null);
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleApprove = (id) => {
+  const handleApprove = (id: number) => {
     setStories(stories.map(story => 
       story.id === id ? { ...story, status: 'approved' } : story
     ));
   };
 
-  const handleReject = (id) => {
+  const handleReject = (id: number) => {
     setStories(stories.map(story => 
       story.id === id ? { ...story, status: 'rejected' } : story
     ));
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: number) => {
     if (window.confirm('Are you sure you want to delete this story?')) {
       setStories(stories.filter(story => story.id !== id));
       if (selectedStory?.id === id) setSelectedStory(null);

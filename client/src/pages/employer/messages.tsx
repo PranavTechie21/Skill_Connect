@@ -89,7 +89,7 @@ export default function Messages() {
       sender: 'them',
       text: 'Hello! I\'m very excited about the Senior Full Stack Developer position at your company.',
       time: '10:30 AM',
-      status: 'delivered'
+      status: 'delivered' as 'read' | 'delivered' | 'sent'
     },
     {
       id: 1,
@@ -291,7 +291,7 @@ export default function Messages() {
                     </div>
                     <div className={`flex items-center gap-1 mt-1 px-2 ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
                       <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-600'}`}>{msg.time}</span>
-                      {msg.sender === 'me' && getStatusIcon(msg.status)}
+                      {msg.sender === 'me' && getStatusIcon(msg.status as 'read' | 'delivered' | 'sent')}
                     </div>
                   </div>
                 </div>

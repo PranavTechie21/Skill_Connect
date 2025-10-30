@@ -359,13 +359,13 @@ const Analytics = () => {
 
             <div className="space-y-4">
               {analyticsData.recentActivities.map((activity, index) => {
-                const colorClasses = {
+                const colorClasses: Record<'blue' | 'green' | 'purple' | 'orange', string> = {
                   blue: 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400',
                   green: 'bg-green-100 dark:bg-green-900 text-green-600 dark:text-green-400',
                   purple: 'bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-400',
                   orange: 'bg-orange-100 dark:bg-orange-900 text-orange-600 dark:text-orange-400',
                 };
-                const colorClass = colorClasses[activity.color] || colorClasses.blue;
+                const colorClass = colorClasses[(activity.color as 'blue' | 'green' | 'purple' | 'orange')] || colorClasses.blue;
 
                 return (
                   <div

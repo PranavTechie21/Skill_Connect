@@ -33,6 +33,7 @@ interface Company {
   status: 'approved' | 'pending' | 'rejected';
   verified: boolean; // Can be derived from status
   logo?: string;
+  color: string;
 }
 
 export default function Employers() {
@@ -120,7 +121,7 @@ export default function Employers() {
     try {
       const payload = {
         ...newCompany,
-        ownerId: parseInt(user.id, 10), // Convert user.id from string to number
+        ownerId: parseInt(user.id!, 10), // Convert user.id from string to number (non-null asserted)
       };
 
       const response = await apiFetch('/api/companies', {

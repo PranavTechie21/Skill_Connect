@@ -170,17 +170,3 @@ export default function AdminJobs() {
   );
 }
 
-const { toast } = useToast();
-
-const loadData = async () => {
-  try {
-    const jobs = await fetchJobs();
-    setJobs(jobs);
-  } catch (error) {
-    toast({
-      title: 'Error',
-      description: error.message,
-      variant: 'destructive'
-    });
-  }
-};
