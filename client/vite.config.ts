@@ -21,8 +21,13 @@ export default defineConfig({
         target: "http://localhost:5002",
         changeOrigin: true,
         secure: false,
+        ws: true,
         rewrite: (path) => path,
         configure: (proxy, options) => {
+          proxy.on('proxyRes', function(proxyRes, req, res) {
+            proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
+            proxyRes.headers['Access-Control-Allow-Origin'] = 'http://localhost:5173';
+          });
           proxy.on('error', (err, req, res) => {
             console.log('proxy error', err);
             res.writeHead(500, {

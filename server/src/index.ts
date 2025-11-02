@@ -11,8 +11,8 @@ dotenv.config({
   path: path.resolve(__dirname, "../.env")
 });
 
-// Set default port to 5003 explicitly
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5003;
+// Set default port to 5002 explicitly
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5002;
 process.env.PORT = String(PORT);
 
 // Log environment variables (excluding sensitive data)
@@ -32,7 +32,8 @@ const server = http.createServer(app);
       'http://localhost:5173',
       'http://127.0.0.1:5173',
       'http://localhost:5174',
-      'http://localhost:5002'
+      'http://localhost:5002',
+      'http://localhost:5003'
     ];
 
     // Configure CORS before any route handlers
@@ -44,12 +45,13 @@ const server = http.createServer(app);
         if (allowedOrigins.includes(origin)) {
           callback(null, true);
         } else {
+          console.warn('CORS blocked request from origin:', origin);
           callback(new Error('Not allowed by CORS'));
         }
       },
       credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization']
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
     }));
 
     // Explicitly handle preflight requests

@@ -146,8 +146,8 @@ export const insertStorySchema = z.object({
 
 // Auth schemas
 export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(6),
+  email: z.string().min(1, "Email is required"),
+  password: z.string().min(1, "Password is required"),
 });
 
 export const registerSchema = z.object({

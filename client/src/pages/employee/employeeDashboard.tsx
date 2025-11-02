@@ -153,35 +153,59 @@ const EmployeeDashboard: React.FC = () => {
     navigate('/', { replace: true });
   };
 
-  const fetchDashboardData = async () => {
-    setLoading(true);
-    try {
-      const jobsResponse = await apiFetch('/api/jobs');
-      const jobsData = await jobsResponse.json();
+const fetchDashboardData = async () => {
+  setLoading(true);
+  try {
+    const jobsResponse = await apiFetch('/api/jobs');
+    const jobsData = await jobsResponse.json();
 
-      const formattedJobs = jobsData.map((job: any) => ({
-        id: job.id,
-        title: job.title,
-        company: job.company?.name || 'N/A',
-        location: job.location,
-        skills: job.skills || [],
-        salary: job.salaryMin && job.salaryMax ? `$${job.salaryMin/1000}k - $${job.salaryMax/1000}k` : 'Not specified',
-        matchPercentage: Math.floor(Math.random() * (98 - 75 + 1) + 75), // Placeholder match %
-        postedTime: new Date(job.createdAt).toLocaleDateString(),
-        isNew: (new Date().getTime() - new Date(job.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000, // New if within 7 days
-        type: job.jobType,
-        applicationsCount: job.applicationsCount || 0,
-      }));
+    console.log('Jobs API response:', jobsData);
 
-      setRecommendedJobs(formattedJobs.slice(0, 3)); // Show top 3 recommended jobs
-      setRecentApplications(mockApplications);
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
-      // Optionally, set an error state to show a message to the user
-    } finally {
-      setLoading(false);
+    // Handle different response formats
+    // The response might be { jobs: [...] } or just [...]
+    let jobsArray = [];
+    if (Array.isArray(jobsData)) {
+      jobsArray = jobsData;
+    } else if (jobsData && Array.isArray(jobsData.jobs)) {
+      jobsArray = jobsData.jobs;
+    } else if (jobsData && Array.isArray(jobsData.data)) {
+      jobsArray = jobsData.data;
+    } else {
+      console.warn('Unexpected jobs data format:', jobsData);
+      jobsArray = [];
     }
-  };
+
+    const formattedJobs = jobsArray.map((job: any) => ({
+      id: job.id,
+      title: job.title,
+      company: job.company?.name || job.companyName || 'N/A',
+      location: job.location || 'Remote',
+      skills: Array.isArray(job.skills) ? job.skills : [],
+      salary: job.salaryMin && job.salaryMax 
+        ? `$${job.salaryMin/1000}k - $${job.salaryMax/1000}k` 
+        : job.salary || 'Not specified',
+      matchPercentage: Math.floor(Math.random() * (98 - 75 + 1) + 75), // Placeholder match %
+      postedTime: job.createdAt 
+        ? new Date(job.createdAt).toLocaleDateString()
+        : 'Recently',
+      isNew: job.createdAt 
+        ? (new Date().getTime() - new Date(job.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000
+        : false,
+      type: job.jobType || job.type || 'Full-time',
+      applicationsCount: job.applicationsCount || 0,
+    }));
+
+    setRecommendedJobs(formattedJobs.slice(0, 3)); // Show top 3 recommended jobs
+    setRecentApplications(mockApplications);
+  } catch (error) {
+    console.error("Failed to fetch dashboard data:", error);
+    // Set empty array so the UI doesn't break
+    setRecommendedJobs([]);
+    setRecentApplications(mockApplications);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const toggleSaveJob = (jobId: string) => {
     setSavedJobs(prev => 

@@ -5,7 +5,7 @@ import { normalizeUserType } from "@/lib/utils";
 
 type Props = {
   children: React.ReactElement;
-  allowedUserTypes?: string[]; // backend userType values e.g. ["Professional"]
+  allowedUserTypes?: string[]; // backend userType values e.g. ["professional", "employer", "admin"]
 };
 
 /**
@@ -16,22 +16,42 @@ type Props = {
 export const ProtectedRoute: React.FC<Props> = ({ children, allowedUserTypes }) => {
   const { user } = useAuth();
 
+  console.log("=== ProtectedRoute Check ===");
+  console.log("User:", user);
+  console.log("Allowed Types:", allowedUserTypes);
+
   if (!user) {
+    console.log("No user found, redirecting to /login");
     return <Navigate to="/login" replace />;
   }
 
   if (allowedUserTypes && allowedUserTypes.length > 0) {
-  const ut = (user as any).userType;
-  const normalized = normalizeUserType(ut as string);
-  const allowedNormalized = allowedUserTypes.map(a => a.toLowerCase());
+    // Handle both snake_case (user_type) and camelCase (userType) from backend
+    const ut = (user as any).userType || (user as any).user_type;
+    const normalized = normalizeUserType(ut as string);
+    const allowedNormalized = allowedUserTypes.map(a => normalizeUserType(a));
+    
+    console.log("ProtectedRoute check:", {
+      userType: ut,
+      normalized,
+      allowedTypes: allowedUserTypes,
+      allowedNormalized
+    });
+
+    // Check if the normalized user type is in the allowed normalized types
     if (!allowedNormalized.includes(normalized)) {
-      // Debug: log mismatch for easier diagnosis
-      console.debug("ProtectedRoute: access denied", { userType: ut, normalized, allowed: allowedNormalized });
-      // If the user is authenticated but not authorized for this route,
-      // redirect them to their appropriate dashboard instead of a 404.
-  const redirectTo = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
-      return <Navigate to={redirectTo} replace />;
+      console.log("ProtectedRoute: access denied", {
+        userType: ut,
+        normalized,
+        allowed: allowedNormalized,
+        reason: `User type "${normalized}" not in allowed types [${allowedNormalized.join(", ")}]`
+      });
+      
+      // If user type is not allowed, redirect to a "not found" or "unauthorized" page.
+      return <Navigate to="/404" replace />;
     }
+    
+    console.log("ProtectedRoute: access granted ✓");
   }
 
   return children;

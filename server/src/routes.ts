@@ -113,10 +113,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       resave: false,
       saveUninitialized: false,
       cookie: { 
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+        secure: false, // Set to false for development (no HTTPS)
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        httpOnly: true
+        httpOnly: true,
+        path: '/'
       },
       name: 'skillconnect.sid'
     }) as any
@@ -125,15 +126,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check if email exists route
   app.post("/api/auth/check-email", async (req, res) => {
     try {
+      console.log('Checking email:', req.body);
       const { email } = req.body;
       if (!email || typeof email !== 'string') {
-        return res.status(400).json({ message: "Invalid email" });
+        console.log('Invalid email format');
+        return res.status(400).json({ 
+          exists: false, 
+          message: "Please enter a valid email address" 
+        });
       }
+
+      if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+        return res.status(400).json({ 
+          exists: false, 
+          message: "Please enter a valid email address format" 
+        });
+      }
+
       const user = await storage.getUserByEmail(email);
-      res.json({ exists: !!user });
+      console.log('User found:', !!user);
+      res.setHeader('Content-Type', 'application/json');
+      
+      if (user) {
+        return res.json({ 
+          exists: true, 
+          message: "This email is already registered. Please use a different email address."
+        });
+      }
+
+      return res.json({ 
+        exists: false, 
+        message: "Email is available"
+      });
+
     } catch (error) {
       console.error('Error checking email:', error);
-      res.status(500).json({ message: "Failed to check email" });
+      res.setHeader('Content-Type', 'application/json');
+      return res.status(500).json({ 
+        exists: false, 
+        message: "Unable to verify email availability. Please try again." 
+      });
     }
   });
 
@@ -246,23 +278,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/login", async (req, res) => {
     try {
-      console.log('🔑 Processing login request');
-      const data = sharedLoginSchema.parse(req.body);
-
-      // Hardcoded admin user check
-      if (data.email === 'admin@gmail.com' && data.password === 'admin123') {
+      console.log('🔑 Processing login request:', req.body);
+      
+      // Handle hardcoded admin case before schema validation
+      if (req.body?.email === 'admin@gmail.com' && req.body?.password === '123456') {
         console.log('👑 Admin user login');
         const adminUser = {
-          id: 'admin-001', // A unique static ID for the admin
+          id: 'admin-001',
           email: 'admin@gmail.com',
           firstName: 'Admin',
           lastName: 'User',
           userType: 'admin',
           createdAt: new Date(),
-          password: '', // Add required field for sanitization
+          password: ''
         };
         req.session.userId = adminUser.id;
         return res.json({ user: sanitizeUser(adminUser) });
+      }
+
+      // For non-admin users, validate schema
+      let data;
+      try {
+        data = sharedLoginSchema.parse(req.body);
+      } catch (validationError) {
+        console.error('Validation error:', validationError);
+        return res.status(400).json({ 
+          message: "Invalid login data", 
+          error: validationError instanceof z.ZodError ? validationError.errors : String(validationError)
+        });
       }
 
       // Get user and handle database errors with fallback
@@ -284,7 +327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (isDbConnectionError) {
             console.warn('⚠️ Using development fallback for database connection issue');
             // Only allow admin login in fallback mode
-            if (data.email === 'admin@gmail.com' && data.password === 'admin123') {
+            if (data.email === 'admin@gmail.com' && data.password === '123456') {
               const fallbackAdmin = {
                 id: 'dev-admin',
                 email: data.email,

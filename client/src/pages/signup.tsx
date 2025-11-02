@@ -98,18 +98,40 @@ export default function Signup() {
         setEmailError(null);
         form.clearErrors("email");
         try {
-          const res = await apiFetch("/api/auth/check-email", {
+          const res = await fetch("/api/auth/check-email", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email }),
+            credentials: 'include'
           });
-          let data: { exists?: boolean } = {};
+
+          let data: { exists?: boolean; message?: string } = {};
+          const contentType = res.headers.get("content-type");
+          
           try {
-            data = await res.json();
+            if (!res.ok) {
+              console.warn("Server returned error status:", res.status);
+              throw new Error("Server error occurred");
+            }
+            
+            if (contentType && contentType.includes("application/json")) {
+              data = await res.json();
+            } else {
+              const text = await res.text();
+              console.warn("Unexpected response type:", contentType, "Response:", text);
+              console.warn("Server might not be running on the correct port. Expected port 5003.");
+              throw new Error("Server connection error");
+            }
           } catch (err) {
             console.warn("Failed to parse email check response:", err);
+            setEmailError("Error checking email availability");
+            return;
           }
-          if (!res.ok || data?.exists) {
+
+          if (!res.ok) {
+            setEmailError("Error checking email availability");
+            form.setError("email", { type: "manual", message: "Error checking email availability" });
+          } else if (data?.exists) {
             setEmailError("This email is already in use.");
             form.setError("email", { type: "manual", message: "This email is already in use." });
           } else {
@@ -135,9 +157,9 @@ export default function Signup() {
   useEffect(() => {
     if (user) {
       const ut = (user as any).userType;
-      const normalized = normalizeUserType(ut as string);
-  if (normalized === "professional") navigate("/employee/dashboard", { replace: true });
-  else if (normalized === "employer") navigate("/employer/dashboard", { replace: true });
+      const normalized = normalizeUserType(ut as string).toLowerCase();
+      if (normalized === "professional") navigate("/employee/dashboard", { replace: true });
+      else if (normalized === "employer") navigate("/employer/dashboard", { replace: true });
       else navigate("/", { replace: true });
     }
   }, [user, navigate]);
@@ -146,6 +168,60 @@ export default function Signup() {
     setOpen(false);
     navigate("/");
   }
+
+  const checkEmail = async (email: string): Promise<boolean> => {
+    if (!email) return false;
+    setIsCheckingEmail(true);
+    try {
+      const res = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+        credentials: 'include'
+      });
+
+      let data: { exists?: boolean; message?: string } = {};
+      const contentType = res.headers.get("content-type");
+      
+      try {
+        if (contentType && contentType.includes("application/json")) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          console.warn("Unexpected response type:", contentType, "Response:", text);
+          throw new Error("Invalid response format");
+        }
+      } catch (err) {
+        console.warn("Failed to parse email check response:", err);
+        setEmailError("Error checking email availability");
+        return false;
+      }
+
+      if (!res.ok) {
+        setEmailError("Error checking email availability");
+        return false;
+      }
+
+      // If email exists, show error and return false
+      if (data?.exists) {
+        const errorMessage = data.message || "This email is already in use. Please use a different email address.";
+        setEmailError(errorMessage);
+        form.setError("email", { type: "manual", message: errorMessage });
+        return false;
+      }
+
+      // If email doesn't exist, clear errors and return true
+      setEmailError(null);
+      form.clearErrors("email");
+      return true;
+    } catch (error) {
+      console.error("Email check failed:", error);
+      setEmailError("Error checking email availability");
+      return false;
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  };
 
   const next = async () => {
     const fieldsToValidate: (keyof SignupFormData)[][] = [
@@ -158,6 +234,17 @@ export default function Signup() {
 
     const isValid = await form.trigger(fieldsToValidate[step]);
     if (!isValid) return;
+
+    // If we're on the first step (email/password), do an additional email check
+    if (step === 0) {
+      const email = form.getValues("email");
+      const isEmailAvailable = await checkEmail(email);
+      if (!isEmailAvailable) {
+        setEmailError("This email is already in use. Please use a different email address.");
+        return; // Stop if email is not available
+      }
+      setEmailError(null); // Clear any existing error if email is available
+    }
 
     setStep(s => Math.min(3, s + 1));
   };
@@ -245,8 +332,18 @@ export default function Signup() {
       if (effectiveUser) {
         if (typeof auth?.setUser === "function") auth.setUser(effectiveUser);
         const normalized = normalizeUserType(effectiveUser?.userType || payload.userType || "");
-        const target = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : "/";
+        console.debug("Signup redirect debug:", {
+          effectiveUserType: effectiveUser?.userType,
+          payloadUserType: payload.userType,
+          normalized,
+          effectiveUser
+        });
         
+        // Fix case sensitivity in comparison
+        const target = normalized === "professional" ? "/employee/dashboard" : 
+                      normalized === "employer" ? "/employer/dashboard" : "/";
+        
+        console.debug("Redirecting to:", target);
         // Use navigate instead of window.location.assign to allow AuthContext to propagate state
         // without a hard reload, which fixes the race condition.
         navigate(target, { replace: true });
@@ -297,9 +394,11 @@ export default function Signup() {
         <Input
           {...form.register("email")}
           placeholder="you@example.com"
+          className={emailError ? "border-destructive" : ""}
         />
         {isCheckingEmail && <p className="text-sm text-muted-foreground mt-1">Checking email...</p>}
         {emailError && <p className="text-sm text-destructive mt-1">{emailError}</p>}
+        {form.formState.errors.email && <p className="text-sm text-destructive mt-1">{form.formState.errors.email.message}</p>}
       </div>
 
       <div>

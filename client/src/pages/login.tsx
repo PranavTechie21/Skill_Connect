@@ -15,7 +15,7 @@ import { apiFetch } from "@/lib/api";
 export default function Login() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const auth = useAuth(); // use the auth object directly
+  const auth = useAuth();
   const user = auth.user;
 
   const [open, setOpen] = useState(true);
@@ -24,10 +24,33 @@ export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
 
   useEffect(() => {
+    console.log("=== Login useEffect triggered ===");
+    console.log("User object:", user);
+    
     if (user) {
-      const normalized = normalizeUserType(user.userType || "");
-      const target = normalized === "professional" ? "/employee/dashboard" : normalized === "employer" ? "/employer/dashboard" : normalized === "admin" ? "/admin" : "/";
-      navigate(target, { replace: true });
+      // Handle both snake_case (user_type) and camelCase (userType) from backend
+      const userType = (user as any).userType || (user as any).user_type;
+      console.log("User type from backend:", userType);
+      const normalized = normalizeUserType(userType || "");
+      console.log("Normalized user type:", normalized);
+      
+      // Map normalized types to routes
+      let target = "/";
+      
+      if (normalized === "admin") {
+        target = "/admin";
+      } else if (normalized === "professional") {
+        target = "/employee/dashboard";
+      } else if (normalized === "employer") {
+        target = "/employer/dashboard";
+      }
+      
+      console.log("Redirecting to:", target);
+      
+      // Use setTimeout to ensure state updates complete before navigation
+      setTimeout(() => {
+        navigate(target, { replace: true });
+      }, 100);
     }
   }, [user, navigate]);
 
@@ -45,11 +68,26 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await auth.login(form.email, form.password);
-  toast({ title: "Success", description: "Logged in successfully", variant: 'success' as any });
-      // The useEffect hook will handle redirection once the user state is updated.
+      console.log("=== Starting login ===");
+      const loggedInUser = await auth.login(form.email, form.password);
+      
+      console.log("Login response user:", loggedInUser);
+      console.log("Login response userType:", loggedInUser.userType);
+      
+      toast({ 
+        title: "Success", 
+        description: "Logged in successfully", 
+        variant: 'success' as any 
+      });
+      
+      // The useEffect hook will handle redirection once the user state is updated
     } catch (err: any) {
-      toast({ title: "Error", description: err?.message || "Invalid credentials", variant: "destructive" });
+      console.error("Login error:", err);
+      toast({ 
+        title: "Error", 
+        description: err?.message || "Invalid credentials", 
+        variant: "destructive" 
+      });
     } finally {
       setLoading(false);
     }
@@ -91,6 +129,7 @@ export default function Login() {
                     </Button>
                   </div>
                 </div>
+                
 
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}

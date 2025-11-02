@@ -9,7 +9,13 @@ import { apiFetch, API_BASE_URL } from "../lib/api";
  * - isLoading properly set during async ops
  * - Cancels stale checkAuth requests on unmount
  */
-
+// Helper to normalize backend user response
+function normalizeUser(backendUser: any): User {
+  return {
+    ...backendUser,
+    userType: backendUser.userType || backendUser.user_type,
+  };
+}
 interface ProfessionalProfile {
   id: number;
   userId: number;
@@ -78,49 +84,46 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   }, [user]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const controller = new AbortController();
+  const checkAuth = async (controller: AbortController) => {
+    setIsLoading(true);
+    try {
+      const res = await apiFetch("/api/auth/me", {
+        signal: controller.signal,
+        credentials: "include",
+      });
 
-    const checkAuth = async () => {
-      setIsLoading(true);
+      let data: any = {};
       try {
-        const res = await apiFetch("/api/auth/me", {
-          signal: controller.signal,
-          credentials: "include",
-        });
-
-        let data: any = {};
-        try {
-          data = await res.json();
-        } catch (e) {
-          console.warn("Failed to parse auth response:", e);
-          data = {};
-        }
-
-        if (!res.ok) {
-          if (!cancelled) setUserState(null); // Only set state if not cancelled
-          return;
-        }
-
-        if (!cancelled) {
-          const returnedUser: User | null = data?.user ?? data ?? null;
-          setUserState(returnedUser);
-        }
-      } catch (err: any) {
-        if (err.name === "AbortError") {
-          console.warn("Request aborted:", err);
-        } else {
-          console.error("Auth check failed:", err);
-          if (!cancelled) setUserState(null);
-        }
-      } finally {
-        if (!cancelled) setIsLoading(false);
+        data = await res.json();
+      } catch (e) {
+        console.warn("Failed to parse auth response:", e);
+        data = {};
       }
-    };
 
-    return () => { cancelled = true; controller.abort(); };
-  }, []); // This effect now runs only once to set up the checkAuth function
+      if (!res.ok) {
+        setUserState(null); // Only set state if not cancelled
+        return;
+      }
+
+      const returnedUser: User | null = data?.user ?? data ?? null;
+      setUserState(returnedUser);
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        console.warn("Request aborted:", err);
+      } else {
+        console.error("Auth check failed:", err);
+        setUserState(null);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const controller = new AbortController();
+    checkAuth(controller);
+    return () => { controller.abort(); };
+  }, []);
 
   const setUser = (u: User | null) => setUserState(u);
 
@@ -158,6 +161,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const returnedUser: User = data?.user ?? data;
       setUserState(returnedUser);
+      // After successful login, the user object is now set in the state.
+      // This will trigger effects in components like login.tsx to redirect.
       return returnedUser;
     } finally {
       setIsLoading(false);

@@ -90,7 +90,8 @@ const ROUTES = {
     CANDIDATES: "/employer/candidates"
   },
   ADMIN: {
-    BASE: "/admin/*"
+    BASE: "/admin/*",
+    DASHBOARD: "/admin" // Add a specific dashboard route for admin
   }
 } as const;
 
@@ -185,7 +186,7 @@ function AppContent() {
                 key={path}
                 path={path}
                 element={
-                  <ProtectedRoute allowedUserTypes={["Professional"]}>
+                  <ProtectedRoute allowedUserTypes={["professional"]}>
                     {element}
                   </ProtectedRoute>
                 }
@@ -200,7 +201,7 @@ function AppContent() {
                 key={path}
                 path={path}
                 element={
-                  <ProtectedRoute allowedUserTypes={["Employer"]}>
+                  <ProtectedRoute allowedUserTypes={["employer"]}>
                     {element}
                   </ProtectedRoute>
                 }
@@ -292,6 +293,3 @@ export default function App() {
     </ErrorBoundary>
   );
 }
-
-
-
