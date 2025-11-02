@@ -1,6 +1,7 @@
 import JobCard from "@/components/job-card";
 import { useState, useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { QuickApplyModal } from "@/components/quick-apply-modal";
 import { Button } from "@/components/ui/button";
 import JobSearch from "@/components/job-search";
 import { Card, CardContent } from "@/components/ui/card";
@@ -52,6 +53,10 @@ interface Job {
   createdAt: string;
   company?: {
     name: string;
+  };
+  employer?: {
+    firstName: string;
+    lastName: string;
   };
 }
 
@@ -169,6 +174,8 @@ export default function Jobs() {
     totalJobTypes: 0,
     avgSalary: 0,
   });
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showQuickApply, setShowQuickApply] = useState(false);
 
   const itemsPerPage = 10;
   const statsRef = useRef(null);
@@ -647,10 +654,11 @@ export default function Jobs() {
                           >
                             <JobCard
                               job={job}
-                              icon={JobIcon}
-                              className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 shadow-sm group-hover:shadow-2xl transition-all duration-300 group-hover:border-blue-300 dark:group-hover:border-blue-600"
-                              hideDaysAgo={true} // Add this prop to hide "4 days ago"
-                              applyButtonSize="lg" // Add this prop for bigger apply button
+                              setSelectedJob={(job) => {
+                                setSelectedJob(job);
+                                setShowQuickApply(true);
+                              }}
+                              setShowQuickApply={setShowQuickApply}
                             />
                           </motion.div>
                         );
@@ -798,14 +806,19 @@ export default function Jobs() {
           </div>
         </div>
       </div>
+
+      {/* Quick Apply Modal */}
+      {showQuickApply && selectedJob && (
+        <QuickApplyModal
+          isOpen={showQuickApply}
+          onClose={() => setShowQuickApply(false)}
+          jobId={selectedJob.id}
+          jobTitle={selectedJob.title}
+          companyName={selectedJob.company?.name || ''}
+          matchPercentage={0}
+        />
+      )}
     </div>
   );
 }
 
-interface JobCardProps {
-  job: any;
-  icon?: LucideIcon;
-  className?: string;
-  hideDaysAgo?: boolean;
-  applyButtonSize?: string;
-}

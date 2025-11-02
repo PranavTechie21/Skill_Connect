@@ -15,6 +15,9 @@ dotenv.config({
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 5002;
 process.env.PORT = String(PORT);
 
+// Import the database health check
+import { checkDatabaseHealth } from './db';
+
 // Log environment variables (excluding sensitive data)
 console.log("Environment:", {
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -28,12 +31,23 @@ const server = http.createServer(app);
 
 (async function start() {
   try {
+    // Check database health before starting the server
+    console.log('Checking database connection...');
+    const isDatabaseHealthy = await checkDatabaseHealth();
+    if (!isDatabaseHealthy) {
+      console.error('Database is not healthy. Please check your database connection.');
+      process.exit(1);
+    }
+    console.log('Database connection is healthy.');
+
     const allowedOrigins = [
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://localhost:5174',
-      'http://localhost:5002',
-      'http://localhost:5003'
+      'http://localhost:5173',  // Vite dev server
+      'http://127.0.0.1:5173',  // Vite dev server alternative
+      'http://localhost:5002',  // API server
+      'http://localhost:5003',  // API server
+      'http://localhost:3000',  // Common React port
+      null,                     // Allow requests with no origin (like mobile apps or curl requests)
+      'null'                    // Allow requests from files opened in browser
     ];
 
     // Configure CORS before any route handlers

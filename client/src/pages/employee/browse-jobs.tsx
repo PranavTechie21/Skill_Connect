@@ -1,11 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSavedJobs } from '../../contexts/SavedJobsContext';
 import { useTheme } from "@/components/theme-provider";
 import {
   Search, MapPin, Briefcase, Heart, TrendingUp, Filter, 
   ChevronDown, Star, ArrowRight, Zap, Target, Award, 
-  Moon, Sun, Sparkles, Crown, X
+  Sparkles, Crown, X
 } from 'lucide-react';
+
+interface ApiJobResponse {
+  id: number;
+  title: string;
+  jobType: string;
+  salaryMin: number;
+  salaryMax: number;
+  location: string;
+  skills: string[];
+  createdAt: string;
+  company?: {
+    name: string;
+  };
+}
 
 interface Job {
   id: string;
@@ -23,104 +37,27 @@ interface Job {
   isRemote?: boolean;
 }
 
-const mockJobs: Job[] = [
-  {
-    id: '1',
-    title: 'Senior Frontend Developer',
-    company: 'TechCorp Inc.',
-    location: 'San Francisco, CA',
-    type: 'Full-time',
-    salary: '$120k - $150k',
-    postedTime: '2 days ago',
-    applicants: 45,
-    matchPercentage: 95,
-    skills: ['React', 'TypeScript', 'TailwindCSS', 'Node.js'],
-    isNew: true,
-    isFeatured: true,
-    isRemote: false
-  },
-  {
-    id: '2',
-    title: 'Full Stack Engineer',
-    company: 'StartupXYZ',
-    location: 'Remote',
-    type: 'Remote',
-    salary: '$100k - $130k',
-    postedTime: '1 week ago',
-    applicants: 67,
-    matchPercentage: 88,
-    skills: ['React', 'Python', 'PostgreSQL', 'AWS'],
-    isNew: false,
-    isRemote: true
-  },
-  {
-    id: '3',
-    title: 'UI/UX Developer',
-    company: 'DesignStudio',
-    location: 'New York, NY',
-    type: 'Full-time',
-    salary: '$90k - $110k',
-    postedTime: '3 days ago',
-    applicants: 32,
-    matchPercentage: 76,
-    skills: ['React', 'Figma', 'CSS', 'JavaScript'],
-    isNew: true,
-    isRemote: false
-  },
-  {
-    id: '4',
-    title: 'React Native Developer',
-    company: 'MobileFirst',
-    location: 'Austin, TX',
-    type: 'Contract',
-    salary: '$95k - $120k',
-    postedTime: '5 days ago',
-    applicants: 28,
-    matchPercentage: 82,
-    skills: ['React Native', 'TypeScript', 'Firebase'],
-    isNew: false,
-    isRemote: true
-  },
-  {
-    id: '5',
-    title: 'DevOps Engineer',
-    company: 'CloudTech',
-    location: 'Seattle, WA',
-    type: 'Full-time',
-    salary: '$130k - $160k',
-    postedTime: '1 day ago',
-    applicants: 52,
-    matchPercentage: 91,
-    skills: ['AWS', 'Docker', 'Kubernetes', 'Terraform'],
-    isNew: true,
-    isFeatured: true,
-    isRemote: false
-  },
-  {
-    id: '6',
-    title: 'Backend Developer',
-    company: 'DataFlow',
-    location: 'Remote',
-    type: 'Remote',
-    salary: '$110k - $140k',
-    postedTime: '4 days ago',
-    applicants: 41,
-    matchPercentage: 84,
-    skills: ['Node.js', 'Python', 'MongoDB', 'Redis'],
-    isNew: false,
-    isRemote: true
-  }
-];
+
+
+import { QuickApplyModal } from '../../components/quick-apply-modal';
 
 const BrowseJobs: React.FC = () => {
   const { theme } = useTheme();
   const darkMode = theme === 'dark';
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedType, setSelectedType] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
-  const [salaryRange, setSalaryRange] = useState([80, 160]);
+  const [showFilters, setShowFilters] = useState(true); // Set to true to show filters by default
+  const [salaryRange, setSalaryRange] = useState([150, 300]); // Adjusted for k range
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [totalJobCount, setTotalJobCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
   const { savedJobs, addJob, removeJob, isJobSaved } = useSavedJobs();
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showQuickApply, setShowQuickApply] = useState(false);
 
   const toggleSaveJob = (job: Job) => {
     if (isJobSaved(job.id)) {
@@ -138,7 +75,67 @@ const BrowseJobs: React.FC = () => {
     );
   };
 
-  const filteredJobs = mockJobs.filter(job => {
+useEffect(() => {
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      // Add job type and search filters to query params
+      const queryParams = new URLSearchParams({
+        page: currentPage.toString(),
+        itemsPerPage: itemsPerPage.toString(),
+        jobType: selectedType !== 'all' ? selectedType : '',
+        search: searchQuery || '',
+        minSalary: salaryRange[0].toString(),
+        maxSalary: salaryRange[1].toString()
+      });
+      
+      const response = await fetch(`/api/jobs?${queryParams}`, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(errorText || `HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      console.log('Received jobs data:', data); // Log the received data
+      if (!data || !data.jobs) {
+        throw new Error('Invalid jobs data received from server');
+      }
+      // Set the total count from the API response
+      setTotalJobCount(data.totalCount || 0);
+      
+      setJobs(data.jobs.map((job: ApiJobResponse) => ({
+        id: job.id,
+        title: job.title,
+        company: job.company?.name || 'Unknown Company',
+        location: job.location || 'Remote',
+        type: job.jobType,
+        salary: job.salaryMin && job.salaryMax ? `$${job.salaryMin/1000}k - $${job.salaryMax/1000}k` : 'Competitive',
+        postedTime: new Date(job.createdAt).toLocaleDateString(),
+        applicants: 0, // You can add this to the API response if needed
+        matchPercentage: 85, // This should be calculated on the server
+        skills: Array.isArray(job.skills) ? job.skills : [],
+        isNew: new Date(job.createdAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        isFeatured: false, // You can add this to the API response if needed
+        isRemote: job.jobType?.toLowerCase() === 'remote'
+      })));
+    } catch (err) {
+      console.error('Error fetching jobs:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs';
+      console.log('Setting error state with message:', errorMessage);
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchJobs();
+}, [currentPage, itemsPerPage, selectedType, searchQuery, salaryRange]);
+
+const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          job.skills.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase()));
@@ -152,7 +149,7 @@ const BrowseJobs: React.FC = () => {
     return matchesSearch && matchesType && matchesSkills && matchesSalary;
   });
 
-  const allSkills = Array.from(new Set(mockJobs.flatMap(job => job.skills)));
+  const allSkills = Array.from(new Set(jobs.flatMap(job => job.skills)));
 
   return (
     <div className={`min-h-screen w-screen fixed inset-0 transition-colors duration-300 overflow-y-auto ${
@@ -289,9 +286,9 @@ const BrowseJobs: React.FC = () => {
                 <div className="space-y-3">
                   <input
                     type="range"
-                    min="50"
-                    max="200"
-                    step="10"
+                    min="150"
+                    max="300"
+                    step="50"
                     value={salaryRange[1]}
                     onChange={(e) => setSalaryRange([salaryRange[0], parseInt(e.target.value)])}
                     className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
@@ -370,7 +367,7 @@ const BrowseJobs: React.FC = () => {
                   Available Jobs
                 </p>
                 <p className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {filteredJobs.length}
+                  {totalJobCount}
                 </p>
               </div>
 
@@ -427,8 +424,8 @@ const BrowseJobs: React.FC = () => {
             </div>
 
             {/* Jobs Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {filteredJobs.map((job) => (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {jobs.map((job) => (
                 <div
                   key={job.id}
                   className={`group rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-500 border-2 overflow-hidden ${
@@ -558,11 +555,16 @@ const BrowseJobs: React.FC = () => {
                         >
                           <Heart className={`w-5 h-5 ${isJobSaved(job.id) ? 'fill-current' : ''}`} />
                         </button>
-                        <button className={`px-5 py-2.5 rounded-lg font-semibold text-sm shadow-lg flex items-center gap-2 group/btn transition-all ${
-                          darkMode
-                            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                            : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-indigo-500/30'
-                        }`}>
+                        <button 
+                          onClick={() => {
+                            setSelectedJob(job);
+                            setShowQuickApply(true);
+                          }}
+                          className={`px-5 py-2.5 rounded-lg font-semibold text-sm shadow-lg flex items-center gap-2 group/btn transition-all ${
+                            darkMode
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                              : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-indigo-500/30'
+                          }`}>
                           Quick Apply
                           <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
                         </button>
@@ -573,8 +575,116 @@ const BrowseJobs: React.FC = () => {
               ))}
             </div>
 
+            {/* Quick Apply Modal */}
+            {selectedJob && (
+              <QuickApplyModal
+                isOpen={showQuickApply}
+                onClose={() => {
+                  setShowQuickApply(false);
+                  setSelectedJob(null);
+                }}
+                jobId={selectedJob.id}
+                jobTitle={selectedJob.title}
+                companyName={selectedJob.company}
+                matchPercentage={selectedJob.matchPercentage}
+              />
+            )}
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between mt-8">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 rounded-lg font-semibold ${
+                    currentPage === 1
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+                >
+                  Previous
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(totalJobCount / itemsPerPage), p + 1))}
+                  disabled={currentPage >= Math.ceil(totalJobCount / itemsPerPage)}
+                  className={`px-4 py-2 rounded-lg font-semibold ${
+                    currentPage >= Math.ceil(totalJobCount / itemsPerPage)
+                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  }`}
+                >
+                  Next
+                </button>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  {[...Array(Math.min(5, Math.ceil(totalJobCount / itemsPerPage)))].map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentPage(i + 1)}
+                      className={`w-10 h-10 flex items-center justify-center rounded-lg font-semibold ${
+                        currentPage === i + 1
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                  {Math.ceil(totalJobCount / itemsPerPage) > 5 && (
+                    <span className="text-gray-600">...</span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600">
+                  Page {currentPage} of {Math.ceil(totalJobCount / itemsPerPage)} • {totalJobCount} total opportunities
+                </p>
+              </div>
+            </div>
+
+            {/* Loading State */}
+            {loading && (
+              <div className={`rounded-3xl shadow-xl p-12 text-center ${
+                darkMode ? 'bg-gray-800' : 'bg-white'
+              }`}>
+                <div className="animate-spin w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4"></div>
+                <h3 className={`text-2xl font-black mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Loading Jobs...
+                </h3>
+                <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
+                  Please wait while we fetch available positions
+                </p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <div className={`rounded-3xl shadow-xl p-12 text-center ${
+                darkMode ? 'bg-gray-800' : 'bg-white'
+              }`}>
+                <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${
+                  darkMode ? 'bg-red-500/20' : 'bg-red-100'
+                }`}>
+                  <X className={`w-12 h-12 ${darkMode ? 'text-red-400' : 'text-red-500'}`} />
+                </div>
+                <h3 className={`text-2xl font-black mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  Error Loading Jobs
+                </h3>
+                <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
+                  {error}
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className={`mt-4 px-6 py-2 rounded-lg font-semibold ${
+                    darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-indigo-600 hover:bg-indigo-700'
+                  } text-white`}
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+
             {/* Empty State */}
-            {filteredJobs.length === 0 && (
+            {!loading && !error && filteredJobs.length === 0 && (
               <div className={`rounded-3xl shadow-xl p-12 text-center ${
                 darkMode ? 'bg-gray-800' : 'bg-white'
               }`}>

@@ -94,7 +94,7 @@ export class Storage {
     }
   }
 
-  // Jobs
+    // Jobs
   async getJobs(filters: {
     location?: string;
     skills?: string[];
@@ -104,77 +104,125 @@ export class Storage {
     itemsPerPage?: number;
   } = {}): Promise<{ jobs: Job[]; totalCount: number }> {
     try {
-      // Build the WHERE clause using conditions
-      const conditions: any[] = [];
-      
-      if (filters.location) {
-        conditions.push(sql`location ILIKE ${`%${filters.location}%`}`);
-      }
-      if (filters.jobType) {
-        conditions.push(sql`job_type = ${filters.jobType}`);
-      }
+      console.log('Getting jobs with filters:', filters);
+
+      // Check connection first
+      await this.checkConnection();
+
+      // Build the SQL query
+      let query = sql`
+        SELECT 
+          j.*,
+          c.name as company_name,
+          c.location as company_location,
+          c.industry as company_industry,
+          c.size as company_size
+        FROM jobs j
+        LEFT JOIN companies c ON j.company_id = c.id
+        WHERE j.is_active = true
+      `;
+
+      // Add search conditions
       if (filters.search) {
-        conditions.push(sql`(
-          title ILIKE ${`%${filters.search}%`} OR
-          description ILIKE ${`%${filters.search}%`}
-        )`);
+        query = sql`${query} AND (
+          j.title ILIKE ${`%${filters.search}%`} OR
+          j.description ILIKE ${`%${filters.search}%`}
+        )`;
       }
+
+      // Add job type filter
+      if (filters.jobType) {
+        query = sql`${query} AND j.job_type = ${filters.jobType}`;
+      }
+
+      // Add location filter
+      if (filters.location) {
+        query = sql`${query} AND j.location ILIKE ${`%${filters.location}%`}`;
+      }
+
+      // Add skills filter
       if (filters.skills?.length) {
         const skillConditions = filters.skills.map(skill => 
-          sql`skills @> ${sql.raw(`'[${JSON.stringify(skill)}]'::jsonb`)}` 
+          sql`j.skills::jsonb @> ${JSON.stringify([skill])}::jsonb` 
         );
-        conditions.push(sql`(${sql.join(skillConditions, sql` OR `)})`);
+        if (skillConditions.length) {
+          query = sql`${query} AND (${sql.join(skillConditions, sql` OR `)})`;
+        }
       }
 
-      // Create the WHERE clause
-      const whereClause = conditions.length > 0 
-        ? sql`WHERE ${sql.join(conditions, sql` AND `)}` 
-        : sql``;
-
-      // Get total count
-      const countQuery = sql`
-        SELECT COUNT(*) 
-        FROM jobs 
-        ${whereClause}
-      `;
-      
+      // Get total count first
+      const countQuery = sql`SELECT COUNT(*) FROM (${query}) AS temp`;
       const countResult = await db.execute(countQuery);
-      const totalCount = parseInt(countResult.rows[0]?.count as string || '0');
+      const totalCount = parseInt(String(countResult.rows[0]?.count) || '0');
 
-      // Build main query
-      let query = sql`
-        SELECT * FROM jobs
-        ${whereClause}
-      `;
-
-      // Add pagination if needed
+      // Add order by and pagination
+      query = sql`${query} ORDER BY j.created_at DESC`;
+      
       if (filters.page && filters.itemsPerPage) {
         const offset = (filters.page - 1) * filters.itemsPerPage;
-        query = sql`
-          ${query}
-          ORDER BY created_at DESC
-          LIMIT ${filters.itemsPerPage}
-          OFFSET ${offset}
-        `;
+        query = sql`${query} LIMIT ${filters.itemsPerPage} OFFSET ${offset}`;
       }
 
+      console.log('Executing query for jobs');
       const result = await db.execute(query);
+      const jobs = result.rows.map((row: any) => {
+        // Ensure skills is always an array
+        const skills = Array.isArray(row.skills) ? row.skills : [];
+        
+        // Format the job data to match the Job interface
+        return {
+          id: String(row.id),
+          title: String(row.title),
+          description: String(row.description),
+          requirements: String(row.requirements),
+          location: String(row.location),
+          jobType: String(row.job_type),
+          salaryMin: Number(row.salary_min),
+          salaryMax: Number(row.salary_max),
+          skills: skills,
+          companyId: String(row.company_id),
+          employerId: String(row.employer_id),
+          isActive: Boolean(row.is_active),
+          createdAt: new Date(row.created_at),
+          company: row.company_name ? {
+            name: String(row.company_name),
+            location: String(row.company_location),
+            industry: String(row.company_industry),
+            size: String(row.company_size)
+          } : null
+        };
+      });
 
-      return {
-        jobs: result.rows as Job[],
-        totalCount
-      };
+      console.log(`Found ${jobs.length} jobs out of ${totalCount} total`);
+
+      return { jobs, totalCount };
     } catch (error) {
       console.error('Error in getJobs:', error);
+      // Add better error context
+      if (error instanceof Error) {
+        if (error.message.includes('connection')) {
+          throw new Error('Database connection failed. Please try again.');
+        }
+        if (error.message.includes('relation "jobs" does not exist')) {
+          throw new Error('Jobs table not found. Database may not be properly initialized.');
+        }
+      }
       throw error;
     }
   }
 
-  async getJob(id: string): Promise<Job | null> {
+  async getJob(id: string | null): Promise<Job | null> {
     try {
-      const result = await db.execute(
-        sql`SELECT * FROM jobs WHERE id = ${id} LIMIT 1`
-      );
+      if (!id) {
+        console.log('No job ID provided to getJob');
+        return null;
+      }
+
+      const result = await db.execute(sql`
+        SELECT * 
+        FROM jobs 
+        WHERE id = ${String(id)}
+      `);
       return castDbResult<Job>(result.rows[0]);
     } catch (error) {
       console.error('Error in getJob:', error);
@@ -196,11 +244,10 @@ export class Storage {
     }
   }
 
-  async createJob(job: InsertJob): Promise<Job> {
+  async createJob(job: Omit<InsertJob, 'id'>): Promise<Job> {
     try {
       const result = await db.execute(sql`
         INSERT INTO jobs (
-          id,
           title,
           description,
           requirements,
@@ -214,7 +261,6 @@ export class Storage {
           is_active,
           created_at
         ) VALUES (
-          ${job.id},
           ${job.title},
           ${job.description},
           ${job.requirements},
@@ -417,13 +463,68 @@ export class Storage {
   // Stories methods
   async getStories(): Promise<Story[]> {
     try {
-      const result = await db.execute(
-        sql`SELECT * FROM stories ORDER BY created_at DESC`
-      );
+      const result = await db.execute(sql`
+        SELECT * FROM stories 
+        WHERE approved = true 
+        ORDER BY featured DESC, created_at DESC
+      `);
       return result.rows as Story[];
     } catch (error) {
       console.error('Error in getStories:', error);
+      if (error instanceof Error && error.message.includes('ECONNREFUSED')) {
+        throw new Error('Database connection failed - please check if database is running');
+      }
       throw error;
+    }
+  }
+
+  async getAllStories(): Promise<Story[]> {
+    try {
+      const result = await db.execute(sql`
+        SELECT * FROM stories 
+        ORDER BY featured DESC, created_at DESC
+      `);
+      return result.rows as Story[];
+    } catch (error) {
+      console.error('Error in getAllStories:', error);
+      throw error;
+    }
+  }
+
+  async updateStoryApproval(id: string, approved: boolean): Promise<Story | null> {
+    try {
+      const result = await db.execute(sql`
+        UPDATE stories 
+        SET 
+          approved = ${approved},
+          updated_at = ${new Date()}
+        WHERE id = ${id}
+        RETURNING *
+      `);
+      return result.rows[0] as Story || null;
+    } catch (error) {
+      console.error('Error in updateStoryApproval:', error);
+      throw error;
+    }
+  }
+
+  async deleteStory(id: string): Promise<void> {
+    try {
+      await db.execute(sql`DELETE FROM stories WHERE id = ${id}`);
+    } catch (error) {
+      console.error('Error in deleteStory:', error);
+      throw error;
+    }
+  }
+
+  // Helper method to check database connection
+  async checkConnection(): Promise<boolean> {
+    try {
+      await db.execute(sql`SELECT 1`);
+      return true;
+    } catch (error) {
+      console.error('Database connection check failed:', error);
+      return false;
     }
   }
 
@@ -636,12 +737,20 @@ export class Storage {
 
   async getApplicationsByApplicant(applicantId: string): Promise<Application[]> {
     try {
-      const result = await db.execute(
-        sql`SELECT * FROM applications WHERE applicant_id = ${applicantId}`
-      );
+      const result = await db.execute(sql`
+        SELECT * FROM applications 
+        WHERE applicant_id = ${applicantId}
+        ORDER BY applied_at DESC
+      `);
       return result.rows as Application[];
     } catch (error) {
       console.error('Error in getApplicationsByApplicant:', error);
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+        });
+      }
       throw error;
     }
   }

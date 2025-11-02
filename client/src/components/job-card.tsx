@@ -1,14 +1,12 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MapPin, Clock, IndianRupee, Heart, Code, Megaphone, Users, Building } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+// No dialog imports needed anymore
 
 interface JobCardProps {
   job: {
@@ -29,12 +27,14 @@ interface JobCardProps {
     };
     createdAt?: string;
   };
+  setSelectedJob?: (job: any) => void;
+  setShowQuickApply?: (show: boolean) => void;
 }
 
-export default function JobCard({ job }: JobCardProps) {
+export default function JobCard({ job, setSelectedJob, setShowQuickApply }: JobCardProps) {
   const { user } = useAuth();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+
   const navigate = useNavigate();
 
   const getJobIcon = (skills: string[]) => {
@@ -59,45 +59,7 @@ export default function JobCard({ job }: JobCardProps) {
     return "bg-yellow-100 text-yellow-800";
   };
 
-  const applyMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest("POST", "/api/applications", {
-        jobId: job.id,
-        applicantId: user?.id,
-        status: "applied",
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Application submitted!",
-        description: "Your application has been sent to the employer.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/applications"] });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Application failed",
-        description: error.message || "Something went wrong",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleApply = () => {
-    if (!user) {
-      navigate('/signup', { state: { message: 'Register yourself on the portal to apply for this job.' } });
-    }
-    if (!user || user.userType !== 'Professional') {
-      toast({
-        title: "Access denied",
-        description: "Only job seekers can apply for jobs.",
-        variant: "destructive",
-      });
-      return;
-    }
-    applyMutation.mutate();
-  };
+  // Removed unused functions
 
   const formatSalary = (min?: number, max?: number) => {
     if (!min && !max) return "Salary not specified";
@@ -164,33 +126,26 @@ export default function JobCard({ job }: JobCardProps) {
             </p>
           </div>
           <div className="flex flex-col items-end ml-6">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button className="mb-2 shadow-sm">
-                  Apply Now
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Confirm Application</DialogTitle>
-                  <DialogDescription>
-                    You are about to apply for the position of <strong>{job.title}</strong> at <strong>{job.company?.name || 'this company'}</strong>.
-                  </DialogDescription>
-                </DialogHeader>
-                <p className="text-sm text-muted-foreground">
-                  Your profile will be submitted to the employer. Are you sure you want to proceed?
-                </p>
-                <DialogFooter>
-                  <Button
-                    type="submit"
-                    onClick={handleApply}
-                    disabled={applyMutation.isPending}
-                  >
-                    {applyMutation.isPending ? "Submitting..." : "Yes, Apply"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+            <Button 
+              className="mb-2 shadow-sm"
+              onClick={() => {
+                if (!user) {
+                  navigate('/signup', { state: { message: 'Register yourself on the portal to apply for this job.' } });
+                  return;
+                }
+                if (user.userType !== 'Professional') {
+                  toast({
+                    title: "Access denied",
+                    description: "Only job seekers can apply for jobs.",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                setSelectedJob?.(job);
+              }}
+            >
+              Quick Apply
+            </Button>
             <Button variant="ghost" size="icon">
               <Heart className="h-4 w-4" />
             </Button>

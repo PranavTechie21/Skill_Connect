@@ -26,7 +26,7 @@ interface Application {
   status: 'pending' | 'reviewed' | 'accepted' | 'rejected' | 'interview';
   appliedAt: string;
   updatedAt: string;
-  job: {
+  job?: {
     title: string;
     company: {
       name: string;
@@ -146,14 +146,16 @@ export default function Applications() {
   };
 
   const filteredApplications = applications.filter(app => {
-    const matchesSearch = app.job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         app.job.company.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = app.job && (app.job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         app.job.company.name.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const statusCounts = applications.reduce((acc, app) => {
-    acc[app.status] = (acc[app.status] || 0) + 1;
+    if (app.status) {
+      acc[app.status] = (acc[app.status] || 0) + 1;
+    }
     return acc;
   }, {} as Record<string, number>);
 
@@ -380,23 +382,23 @@ export default function Applications() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-4 flex-1">
                       <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg bg-gradient-to-br from-blue-500 to-purple-600 dark:from-blue-500 dark:to-indigo-600">
-                        {application.job.company.name.substring(0, 2)}
+                        {application.job?.company.name.substring(0, 2)}
                       </div>
                       <div className="flex-1">
                         <h3 className="text-lg font-black transition-colors mb-1 text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
-                          {application.job.title}
+                          {application.job?.title}
                         </h3>
                         <p className="font-medium mb-2 text-gray-600 dark:text-gray-400">
-                          {application.job.company.name}
+                          {application.job?.company.name}
                         </p>
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span className="flex items-center gap-1.5">
                             <MapPin className="w-4 h-4" />
-                            {application.job.location}
+                            {application.job?.location}
                           </span>
                           <span className="flex items-center gap-1.5">
                             <Briefcase className="w-4 h-4" />
-                            {application.job.jobType}
+                            {application.job?.jobType}
                           </span>
                         </div>
                       </div>
@@ -415,7 +417,7 @@ export default function Applications() {
 
                   <div className="flex items-center justify-between">
                     <span className="text-lg font-bold text-gray-900 dark:text-white">
-                      {application.job.salary}
+                      {application.job?.salary}
                     </span>
                     {application.interviewDate && (
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400">
@@ -452,23 +454,23 @@ export default function Applications() {
                 {/* Job Info */}
                 <div className="flex items-start gap-4">
                   <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-blue-500 to-purple-600 dark:from-blue-500 dark:to-indigo-600">
-                    {selectedApplication?.job.company.name.substring(0, 2)}
+                    {selectedApplication?.job?.company.name.substring(0, 2)}
                   </div>
                   <div className="flex-1">
                     <h4 className="text-lg font-black text-gray-900 dark:text-white">
-                      {selectedApplication?.job.title}
+                      {selectedApplication?.job?.title}
                     </h4>
                     <p className="font-medium text-gray-600 dark:text-gray-400">
-                      {selectedApplication?.job.company.name}
+                      {selectedApplication?.job?.company.name}
                     </p>
                     <div className="flex items-center gap-4 text-sm mt-2 text-gray-500">
                       <span className="flex items-center gap-1.5">
                         <MapPin className="w-4 h-4" />
-                        {selectedApplication?.job.location}
+                        {selectedApplication?.job?.location}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Briefcase className="w-4 h-4" />
-                        {selectedApplication?.job.jobType}
+                        {selectedApplication?.job?.jobType}
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Calendar className="w-4 h-4" />
@@ -492,7 +494,7 @@ export default function Applications() {
                     </div>
                   </div>
                   <span className="text-lg font-bold text-gray-900 dark:text-white">
-                    {selectedApplication?.job.salary}
+                    {selectedApplication?.job?.salary}
                   </span>
                 </div>
 

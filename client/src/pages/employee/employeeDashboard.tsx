@@ -3,10 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/components/theme-provider';
 
-// Import ROUTES constant
 const ROUTES = {
   EMPLOYEE: {
-    MESSAGES: '/employee/messages'
+    DASHBOARD: '/employee/dashboard',
+    MESSAGES: '/employee/messages',
+    JOBS: '/employee/jobs',
+    APPLICATIONS: '/employee/applications',
+    SAVED_JOBS: '/employee/saved-jobs',
+    PROFILE: '/employee/profile',
+    SETTINGS: '/employee/settings'
   }
 };
 import {
@@ -16,6 +21,7 @@ import {
   Award, Heart, Moon, Sun, Menu, X, Home, BarChart3,
   Upload, Calendar, Building2
 } from 'lucide-react';
+import { QuickApplyModal } from '../../components/quick-apply-modal';
 
 import { apiFetch } from '@/lib/api';
 
@@ -84,11 +90,13 @@ const EmployeeDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [recommendedJobs, setRecommendedJobs] = useState<Job[]>([]);
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
-  const [stats] = useState<UserStats>({
-    totalApplications: 12,
-    pendingApplications: 3,
-    interviewInvitations: 2,
-    profileCompletion: 75
+  const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showQuickApply, setShowQuickApply] = useState(false);
+  const [stats, setStats] = useState<UserStats>({
+    totalApplications: 0,
+    pendingApplications: 0,
+    interviewInvitations: 0,
+    profileCompletion: 0
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -156,50 +164,50 @@ const EmployeeDashboard: React.FC = () => {
 const fetchDashboardData = async () => {
   setLoading(true);
   try {
-    const jobsResponse = await apiFetch('/api/jobs');
-    const jobsData = await jobsResponse.json();
-
-    console.log('Jobs API response:', jobsData);
-
-    // Handle different response formats
-    // The response might be { jobs: [...] } or just [...]
-    let jobsArray = [];
-    if (Array.isArray(jobsData)) {
-      jobsArray = jobsData;
-    } else if (jobsData && Array.isArray(jobsData.jobs)) {
-      jobsArray = jobsData.jobs;
-    } else if (jobsData && Array.isArray(jobsData.data)) {
-      jobsArray = jobsData.data;
-    } else {
-      console.warn('Unexpected jobs data format:', jobsData);
-      jobsArray = [];
+    // Get the current user's dashboard data
+    const response = await apiFetch('/api/dashboard');
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    
+    if (data.stats) {
+      setStats({
+        totalApplications: data.stats.totalApplications,
+        pendingApplications: data.stats.pendingApplications,
+        interviewInvitations: data.stats.interviewInvitations,
+        profileCompletion: data.stats.profileCompletion
+      });
     }
 
-    const formattedJobs = jobsArray.map((job: any) => ({
-      id: job.id,
-      title: job.title,
-      company: job.company?.name || job.companyName || 'N/A',
-      location: job.location || 'Remote',
-      skills: Array.isArray(job.skills) ? job.skills : [],
-      salary: job.salaryMin && job.salaryMax 
-        ? `$${job.salaryMin/1000}k - $${job.salaryMax/1000}k` 
-        : job.salary || 'Not specified',
-      matchPercentage: Math.floor(Math.random() * (98 - 75 + 1) + 75), // Placeholder match %
-      postedTime: job.createdAt 
-        ? new Date(job.createdAt).toLocaleDateString()
-        : 'Recently',
-      isNew: job.createdAt 
-        ? (new Date().getTime() - new Date(job.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000
-        : false,
-      type: job.jobType || job.type || 'Full-time',
-      applicationsCount: job.applicationsCount || 0,
-    }));
+    if (data.recommendedJobs) {
+      setRecommendedJobs(data.recommendedJobs.map((job: any) => ({
+        id: job.id,
+        title: job.title,
+        company: job.company?.name || job.companyName || 'N/A',
+        location: job.location || 'Remote',
+        skills: Array.isArray(job.skills) ? job.skills : [],
+        salary: job.salaryMin && job.salaryMax 
+          ? `$${job.salaryMin/1000}k - $${job.salaryMax/1000}k` 
+          : job.salary || 'Not specified',
+        matchPercentage: job.matchPercentage || Math.floor(Math.random() * (98 - 75 + 1) + 75),
+        postedTime: job.createdAt 
+          ? new Date(job.createdAt).toLocaleDateString()
+          : 'Recently',
+        isNew: job.createdAt 
+          ? (new Date().getTime() - new Date(job.createdAt).getTime()) < 7 * 24 * 60 * 60 * 1000
+          : false,
+        type: job.jobType || job.type || 'Full-time',
+        applicationsCount: job.applicationsCount || 0,
+      })));
+    }
 
-    setRecommendedJobs(formattedJobs.slice(0, 3)); // Show top 3 recommended jobs
-    setRecentApplications(mockApplications);
+    if (data.recentApplications) {
+      setRecentApplications(data.recentApplications);
+    }
   } catch (error) {
     console.error("Failed to fetch dashboard data:", error);
-    // Set empty array so the UI doesn't break
+    // If the API fails, use mock data as fallback
     setRecommendedJobs([]);
     setRecentApplications(mockApplications);
   } finally {
@@ -401,7 +409,14 @@ const fetchDashboardData = async () => {
               >
                 <Heart className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`} />
               </button>
-              <button className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold text-sm shadow-lg shadow-blue-500/30 flex items-center gap-2 group">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedJob(job);
+                  setShowQuickApply(true);
+                }} 
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold text-sm shadow-lg shadow-blue-500/30 flex items-center gap-2 group"
+              >
                 Quick Apply
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
@@ -428,6 +443,7 @@ const fetchDashboardData = async () => {
   }
 
   return (
+    <>
     <div className={`min-h-screen w-screen transition-colors duration-300 fixed inset-0 ${
       darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50'
     } overflow-x-hidden`}>
@@ -448,7 +464,7 @@ const fetchDashboardData = async () => {
                 <h1 className={`text-2xl font-bold ${
                   darkMode ? 'text-white' : 'bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent'
                 }`}>
-                  Welcome back, {user?.firstName || 'User'}! 👋
+                  Welcome back, {user?.firstName}! 👋
                 </h1>
                 <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
                   Let's find your dream job today
@@ -880,17 +896,17 @@ const fetchDashboardData = async () => {
               }`}>
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
-                    <Star className="w-6 h-6 text-white" />
+                    <Briefcase className="w-6 h-6 text-white" />
                   </div>
-                  <Heart className="w-5 h-5 text-purple-500" />
+                  <Target className="w-5 h-5 text-purple-500" />
                 </div>
                 <p className={`text-sm font-medium mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Profile Score
+                  Total Jobs
                 </p>
                 <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {stats.profileCompletion}%
+                  390
                 </p>
-                <p className="text-xs text-amber-600 font-semibold mt-2">Complete to boost matches</p>
+                <p className="text-xs text-purple-600 font-semibold mt-2">Available positions</p>
               </div>
             </div>
 
@@ -991,11 +1007,14 @@ const fetchDashboardData = async () => {
                     Jobs that match your profile and preferences
                   </p>
                 </div>
-                <button className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
-                  darkMode 
-                    ? 'text-blue-400 hover:bg-blue-500/20' 
-                    : 'text-blue-600 hover:bg-blue-50'
-                }`}>
+                <button 
+                  onClick={() => navigate(ROUTES.EMPLOYEE.JOBS)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
+                    darkMode 
+                      ? 'text-blue-400 hover:bg-blue-500/20' 
+                      : 'text-blue-600 hover:bg-blue-50'
+                  }`}
+                >
                   View All
                   <ArrowRight className="w-4 h-4" />
                 </button>
@@ -1021,11 +1040,14 @@ const fetchDashboardData = async () => {
                       Track your job application status
                     </p>
                   </div>
-                  <button className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
-                    darkMode 
-                      ? 'text-blue-400 hover:bg-blue-500/20' 
-                      : 'text-blue-600 hover:bg-blue-50'
-                  }`}>
+                  <button 
+                    onClick={() => navigate(ROUTES.EMPLOYEE.APPLICATIONS)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
+                      darkMode 
+                        ? 'text-blue-400 hover:bg-blue-500/20' 
+                        : 'text-blue-600 hover:bg-blue-50'
+                    }`}
+                  >
                     View All
                     <ArrowRight className="w-4 h-4" />
                   </button>
@@ -1160,6 +1182,22 @@ const fetchDashboardData = async () => {
         </main>
       </div>
     </div>
+
+    {/* Quick Apply Modal */}
+    {selectedJob && (
+      <QuickApplyModal
+        isOpen={showQuickApply}
+        onClose={() => {
+          setShowQuickApply(false);
+          setSelectedJob(null);
+        }}
+        jobId={selectedJob.id}
+        jobTitle={selectedJob.title}
+        companyName={selectedJob.company}
+        matchPercentage={selectedJob.matchPercentage}
+      />
+    )}
+    </>
   );
 };
 

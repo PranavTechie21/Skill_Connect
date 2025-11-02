@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Eye, Check, X, Trash2, Mail, Calendar, RefreshCw, Plus, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
 import AdminBackButton from '../../components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
-
-// API base URL - using the correct backend server port
-const API_BASE_URL = 'http://localhost:5003';
+import { apiFetch } from '../../lib/api';
 
 const SuccessStoriesAdmin = () => {
   const { theme: currentTheme } = useTheme();
@@ -31,7 +29,7 @@ const SuccessStoriesAdmin = () => {
     const fetchStories = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`${API_BASE_URL}/api/stories`);
+        const response = await apiFetch(`/api/stories`);
         if (!response.ok) {
           throw new Error('Failed to fetch stories');
         }
@@ -91,7 +89,7 @@ const SuccessStoriesAdmin = () => {
 
   const handleApprove = async (id: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stories/${id}/approve`, {
+      const response = await apiFetch(`/api/stories/${id}/approve`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -113,7 +111,7 @@ const SuccessStoriesAdmin = () => {
 
   const handleReject = async (id: number) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stories/${id}/reject`, {
+      const response = await apiFetch(`/api/stories/${id}/reject`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -136,7 +134,7 @@ const SuccessStoriesAdmin = () => {
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this story?')) {
       try {
-        const response = await fetch(`${API_BASE_URL}/api/stories/${id}`, {
+        const response = await apiFetch(`/api/stories/${id}`, {
           method: 'DELETE'
         });
 
@@ -158,7 +156,7 @@ const SuccessStoriesAdmin = () => {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/stories`, {
+      const response = await apiFetch(`/api/stories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

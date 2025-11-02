@@ -88,13 +88,17 @@ export const experiences = pgTable("experiences", {
 
 export const stories = pgTable('stories', {
   id: integer('id').primaryKey(),
-  title: text('title').notNull(),
-  content: text('content').notNull(),  
+  title: varchar('title', { length: 255 }).notNull(),
+  content: text('content').notNull(),
+  tags: text("tags").array().default([]),
+  submitterName: varchar('submitter_name', { length: 255 }),
+  submitterEmail: varchar('submitter_email', { length: 255 }),
   authorId: text("author_id").references(() => users.id, { onDelete: 'set null' }),
-  submitterName: text('submitter_name'), // For guest submissions
-  submitterEmail: text('submitter_email'), // For guest submissions
-  tags: text("tags").array().default([]), // Store as native array
+  approved: boolean("approved").notNull().default(false),
+  featured: boolean("featured").notNull().default(false),
+  views: integer("views").notNull().default(0),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 
@@ -116,9 +120,18 @@ export const insertCompanySchema = createInsertSchema(companies).omit({
   createdAt: true,
 });
 
-export const insertJobSchema = createInsertSchema(jobs).omit({
-  id: true,
-  createdAt: true,
+export const insertJobSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  requirements: z.string().min(1, "Requirements are required"),
+  location: z.string().min(1, "Location is required"),
+  jobType: z.enum(["full-time", "part-time", "contract", "remote"]),
+  salaryMin: z.number().int().min(0).nullable(),
+  salaryMax: z.number().int().min(0).nullable(),
+  skills: z.array(z.string()).default([]),
+  companyId: z.string(),
+  employerId: z.string(),
+  isActive: z.boolean().default(true),
 });
 
 export const insertApplicationSchema = createInsertSchema(applications).omit({
@@ -137,9 +150,11 @@ export const insertExperienceSchema = createInsertSchema(experiences).omit({
 });
 
 export const insertStorySchema = z.object({
-  title: z.string().min(1, "Title is required"),
+  title: z.string().min(1, "Title is required").max(255, "Title must be less than 255 characters"),
   content: z.string().min(1, "Content is required"),
   tags: z.array(z.string()).optional(),
+  submitterName: z.string().max(255).optional(),
+  submitterEmail: z.string().email().max(255).optional(),
   authorId: z.string().nullable(),
 });
 

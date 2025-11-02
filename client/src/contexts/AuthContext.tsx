@@ -17,24 +17,24 @@ function normalizeUser(backendUser: any): User {
   };
 }
 interface ProfessionalProfile {
-  id: number;
-  userId: number;
-  headline: string | null;
-  bio: string | null;
-  skills: string[];
+  id?: number;
+  userId?: number;
+  headline?: string | null;
+  bio?: string | null;
+  skills?: string[];
 }
 
 interface Company {
-  id: number;
+  id?: number;
   name: string;
-  description: string | null;
-  website: string | null;
-  location: string | null;
-  size: string | null;
-  industry: string | null;
-  logo: string | null;
-  ownerId: number;
-  createdAt: string;
+  description?: string | null;
+  website?: string | null;
+  location?: string | null;
+  size?: string | null;
+  industry?: string | null;
+  logo?: string | null;
+  ownerId?: number;
+  createdAt?: string;
 }
 
 interface User {
@@ -46,6 +46,8 @@ interface User {
   location?: string;
   profilePhoto?: string;
   telephoneNumber?: string;
+  bio?: string;
+  skills?: string[];
   profile?: ProfessionalProfile | null;
   company?: Company | null;
 }
@@ -56,6 +58,7 @@ interface AuthContextType {
   register: (userData: any) => Promise<User>;
   logout: () => Promise<void>;
   setUser: (u: User | null) => void; // exposed for components that need to set user manually
+  updateUser: (userData: Partial<User>) => Promise<User>; // new function to update user profile
   isLoading: boolean;
 }
 
@@ -222,12 +225,39 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateUser = async (userData: Partial<User>): Promise<User> => {
+    setIsLoading(true);
+    try {
+      const res = await apiFetch("/api/users/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(userData),
+        credentials: "include"
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update user profile");
+      }
+
+      const updatedUser = await res.json();
+      setUserState(prevUser => ({
+        ...prevUser,
+        ...updatedUser
+      }));
+      
+      return updatedUser;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     login,
     register,
     logout,
     setUser,
+    updateUser,
     isLoading
   };
 

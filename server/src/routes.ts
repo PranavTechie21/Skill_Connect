@@ -3,8 +3,14 @@ import jobsRouter from "./routes/jobs";
 import { type Express, Router } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
+import cors from "cors";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import fs from 'fs';
+import path from 'path';
+import multer from 'multer';
+import { applications } from './schema';
+import { db } from './db';
 import { storage } from "./storage";
 import { 
   loginSchema as sharedLoginSchema, 
@@ -21,6 +27,12 @@ import { handleError } from "./utils";
 declare module 'express-session' {
   interface SessionData {
     userId: string;
+  }
+}
+
+declare module 'express' {
+  interface Request {
+    files?: any[];
   }
 }
 
@@ -105,25 +117,66 @@ const sanitizeUser = (user: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Apply session middleware to all routes so req.session is available everywhere.
-  // Public routes can read it, and authenticated routes are still protected by requireAuth.
-  app.use(
-    session({
-      secret: process.env.SESSION_SECRET || 'your-secret-key',
-      resave: false,
-      saveUninitialized: false,
-      cookie: { 
-        secure: false, // Set to false for development (no HTTPS)
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        httpOnly: true,
-        path: '/'
-      },
-      name: 'skillconnect.sid'
-    }) as any
-  );
+    // Configure CORS for all routes
+    app.use(cors({
+      origin: [
+        'http://localhost:5173', 
+        'http://127.0.0.1:5173', 
+        'http://localhost:5002',
+        'http://127.0.0.1:5002'
+      ],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    }));
 
-  // Check if email exists route
+    // Setup session and file upload handling
+    app.use(
+      session({
+        secret: process.env.SESSION_SECRET || 'your-secret-key',
+        resave: false,
+        saveUninitialized: false,
+        cookie: { 
+          secure: false, // Set to false for development (no HTTPS)
+          sameSite: 'lax',
+          maxAge: 24 * 60 * 60 * 1000, // 24 hours
+          httpOnly: true,
+          path: '/'
+        },
+        name: 'skillconnect.sid'
+      }) as any
+    );
+
+    // Setup uploads directory and multer for file uploads
+  const uploadDir = path.join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+
+  const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    },
+  });
+
+  const upload = multer({
+    storage,
+    fileFilter: (req, file, cb) => {
+      const allowedMimes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Invalid file type. Only PDF and Word documents are allowed.'));
+      }
+    },
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+  });  // Check if email exists route
   app.post("/api/auth/check-email", async (req, res) => {
     try {
       console.log('Checking email:', req.body);
@@ -804,8 +857,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Mount the dashboard route with auth
+  authRouter.use("/dashboard", dashboardRouter);
+
+  // Mount the applications routes with auth
+  const applicationRoutes = Router();
+  applicationRoutes.post("/quick-apply", upload.array('attachments', 5), async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      
+      if (!userId) {
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const { jobId, coverLetter } = req.body;
+
+      // Get uploaded file details
+      const attachments = (req.files as Express.Multer.File[])?.map(file => ({
+        filename: file.filename,
+        originalName: file.originalname,
+        path: file.path,
+        size: file.size,
+        mimeType: file.mimetype
+      })) || [];
+
+      // Create application record
+      const [application] = await db
+        .insert(applications)
+        .values({
+          userId: parseInt(userId),
+          jobId: parseInt(jobId),
+          coverLetter,
+          attachments,
+          status: 'review'
+        })
+        .returning();
+
+      res.status(201).json(application);
+    } catch (error) {
+      console.error('Error creating application:', error);
+      
+      // Clean up any uploaded files if there was an error
+      if (req.files) {
+        const files = Array.isArray(req.files) ? req.files : Object.values(req.files);
+        await Promise.all(
+          files.map(file => 
+            fs.promises.unlink(file.path).catch(err => 
+              console.error(`Failed to delete file ${file.path}:`, err)
+            )
+          )
+        );
+      }
+
+      res.status(500).json({ 
+        error: 'Failed to submit application',
+        message: error instanceof Error ? error.message : 'Unknown error occurred'
+      });
+    }
+  });
+
   // Mount the authenticated router
   app.use("/api", authRouter);
+  app.use("/api/applications", applicationRoutes);
 
   // Debug route
   app.get("/api/debug/storage", async (req, res) => {
@@ -1051,6 +1164,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       handleError(res, error, "Failed to fetch stats");
+    }
+  });
+
+  // Admin: Get all stories (including unapproved ones)
+  app.get("/api/admin/stories", requireAdmin, async (req, res) => {
+    try {
+      const stories = await storage.getAllStories();
+      res.json(stories);
+    } catch (error) {
+      handleError(res, error, "Failed to fetch stories");
+    }
+  });
+
+  // Admin: Approve/reject a story
+  app.put("/api/admin/stories/:id/approval", requireAdmin, async (req, res) => {
+    try {
+      const { approved } = req.body;
+      if (typeof approved !== 'boolean') {
+        return res.status(400).json({ message: "Approved status must be a boolean" });
+      }
+
+      const story = await storage.updateStoryApproval(req.params.id, approved);
+      if (!story) {
+        return res.status(404).json({ message: "Story not found" });
+      }
+      res.json(story);
+    } catch (error) {
+      handleError(res, error, "Failed to update story approval status");
+    }
+  });
+
+  // Admin: Delete a story
+  app.delete("/api/admin/stories/:id", requireAdmin, async (req, res) => {
+    try {
+      await storage.deleteStory(req.params.id);
+      res.json({ message: "Story deleted successfully" });
+    } catch (error) {
+      handleError(res, error, "Failed to delete story");
     }
   });
 
