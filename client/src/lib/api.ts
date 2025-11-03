@@ -41,8 +41,36 @@ export const apiFetch = async (url: string, options?: RequestInit) => {
 	}
 };
 
-// API methods
+// Types
+export interface Job {
+  id: string;
+  title: string;
+  department: string;
+  location: string;
+  type: string;
+  salary: string;
+  postedDate: string;
+  applications: number;
+  newApplications: number;
+  status: 'active' | 'paused' | 'closed';
+  views: number;
+  conversion: number;
+}
+
+export interface Story {
+  id?: string;
+  title: string;
+  content: string;
+  tags?: string[];
+  status: 'pending' | 'approved' | 'rejected';
+  views?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// API endpoints
 export const api = {
+  // Base HTTP methods
   async get(url: string, params?: Record<string, any>) {
     const queryString = params ? `?${new URLSearchParams(params)}` : '';
     const response = await apiFetch(`/api${url}${queryString}`);
@@ -87,57 +115,74 @@ export const api = {
       body: JSON.stringify(data),
     });
     return response.json();
-  }
-};
-
-// Types
-export interface Job {
-  id: string;
-  title: string;
-  department: string;
-  location: string;
-  type: string;
-  salary: string;
-  postedDate: string;
-  applications: number;
-  newApplications: number;
-  status: 'active' | 'paused' | 'closed';
-  views: number;
-  conversion: number;
-}
-
-// Jobs API
-export const jobsApi = {
-  async getJobs(filters = {}) {
-    return api.get('/jobs', filters);
   },
 
-  async getJob(id: string) {
-    return api.get(`/jobs/${id}`);
+  // Stories API
+  stories: {
+    async getAll() {
+      return api.get('/stories');
+    },
+
+    async getPending() {
+      return api.get('/stories', { status: 'pending' });
+    },
+
+    async getApproved() {
+      return api.get('/stories', { status: 'approved' });
+    },
+
+    async submit(data: { title: string; content: string; tags?: string[] }) {
+      return api.post('/stories', {
+        ...data,
+        status: 'pending'
+      });
+    },
+
+    async update(id: string, storyData: Partial<Story>) {
+      return api.put(`/stories/${id}`, storyData);
+    },
+
+    async delete(id: string) {
+      return api.delete(`/stories/${id}`);
+    },
+
+    async updateStatus(id: string | number, status: Story['status']) {
+      return api.patch(`/stories/${id}/status`, { status });
+    }
   },
 
-  async createJob(jobData: Partial<Job>) {
-    return api.post('/jobs', jobData);
-  },
+  // Jobs API
+  jobs: {
+    async getAll(filters = {}) {
+      return api.get('/jobs', filters);
+    },
 
-  async updateJob(id: string, jobData: Partial<Job>) {
-    return api.put(`/jobs/${id}`, jobData);
-  },
+    async getOne(id: string) {
+      return api.get(`/jobs/${id}`);
+    },
 
-  async deleteJob(id: string) {
-    return api.delete(`/jobs/${id}`);
-  },
+    async create(jobData: Partial<Job>) {
+      return api.post('/jobs', jobData);
+    },
 
-  async updateJobStatus(id: string, status: Job['status']) {
-    return api.patch(`/jobs/${id}/status`, { status });
-  },
+    async update(id: string, jobData: Partial<Job>) {
+      return api.put(`/jobs/${id}`, jobData);
+    },
 
-  async getJobApplications(id: string) {
-    return api.get(`/jobs/${id}/applications`);
-  },
+    async delete(id: string) {
+      return api.delete(`/jobs/${id}`);
+    },
 
-  async exportJobs(filters = {}) {
-    const response = await api.get('/jobs/export', filters);
-    return response;
+    async updateStatus(id: string, status: Job['status']) {
+      return api.patch(`/jobs/${id}/status`, { status });
+    },
+
+    async getApplications(id: string) {
+      return api.get(`/jobs/${id}/applications`);
+    },
+
+    async export(filters = {}) {
+      return api.get('/jobs/export', filters);
+    }
   }
 };

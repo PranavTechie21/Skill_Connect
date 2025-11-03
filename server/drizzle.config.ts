@@ -4,8 +4,12 @@ export default {
   schema: '../shared/schema.ts',
   out: './drizzle',
   dialect: 'postgresql',
-  driver: 'pg',
+  driver: 'postgres',
   dbCredentials: {
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:dsa@localhost:5432/graphicgenie'
+    host: 'localhost',
+    port: 5432,
+    user: 'postgres',
+    password: 'dsa',
+    database: 'graphicgenie'
   }
-} satisfies Config;
+} as unknown as Config;

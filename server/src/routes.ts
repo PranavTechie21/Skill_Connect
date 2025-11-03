@@ -1,5 +1,6 @@
 import dashboardRouter from "./routes/dashboard";
 import jobsRouter from "./routes/jobs";
+import adminStoriesRouter from "./routes/admin/stories";
 import { type Express, Router } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
@@ -462,10 +463,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/stories", async (req, res) => {
     try {
-            console.log('Inspecting storage object:', storage);
-      const stories = await storage.getStories();
-      res.json(stories);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 12;
+      const offset = (page - 1) * limit;
+
+      // Get total count first
+      const countResult = await storage.getStoryCount();
+      
+      // Get paginated stories
+      const stories = await storage.getPaginatedStories(limit, offset);
+      
+      res.json({
+        stories,
+        meta: {
+          total: countResult,
+          page,
+          limit,
+          totalPages: Math.ceil(countResult / limit)
+        }
+      });
     } catch (error) {
+      console.error('Error fetching stories:', error);
       handleError(res, error, "Failed to fetch stories");
     }
   });
@@ -860,6 +878,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount the dashboard route with auth
   authRouter.use("/dashboard", dashboardRouter);
+  
+  // Mount the admin stories route
+  app.use("/api/admin/stories", adminStoriesRouter);
 
   // Mount the applications routes with auth
   const applicationRoutes = Router();
@@ -902,11 +923,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.files) {
         const files = Array.isArray(req.files) ? req.files : Object.values(req.files);
         await Promise.all(
-          files.map(file => 
-            fs.promises.unlink(file.path).catch(err => 
-              console.error(`Failed to delete file ${file.path}:`, err)
-            )
-          )
+          files.map(file => {
+            const f = file as Express.Multer.File;
+            return fs.promises.unlink(f.path).catch(err => 
+              console.error(`Failed to delete file ${f.path}:`, err)
+            );
+          })
         );
       }
 

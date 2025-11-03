@@ -29,14 +29,14 @@ const SuccessStoriesAdmin = () => {
     const fetchStories = async () => {
       try {
         setIsLoading(true);
-        const response = await apiFetch(`/api/stories`);
+        const response = await apiFetch(`/api/admin/stories`);
         if (!response.ok) {
           throw new Error('Failed to fetch stories');
         }
         const data = await response.json();
         
         // Transform the data to match our Story interface
-        const transformedStories = data.map((story: any) => {
+        const transformedStories = Array.isArray(data) ? data.map((story: any) => {
           // Safely parse the date
           let date;
           try {
@@ -48,17 +48,17 @@ const SuccessStoriesAdmin = () => {
 
           return {
             id: story.id,
-            name: story.submitterName || story.authorName || 'Anonymous',
-            email: story.submitterEmail || story.authorEmail || '',
+            name: story.submitterName || 'Anonymous',
+            email: story.submitterEmail || '',
             title: story.title,
             story: story.content,
-            tags: Array.isArray(story.tags) ? story.tags.join(', ') : story.tags || '',
-            type: story.type || 'employee',
+            tags: Array.isArray(story.tags) ? story.tags.join(', ') : '',
+            type: 'professional', // Default since we don't store type
             date: date,
-            status: story.approved ? 'approved' : (story.rejected ? 'rejected' : 'pending'),
-            initials: (story.submitterName || story.authorName || 'A').split(' ').map((n: string) => n[0]).join('')
+            status: story.approved ? 'approved' : 'pending',
+            initials: (story.submitterName || 'A').split(' ').map((n: string) => n[0]).join('')
           };
-        });
+        }) : [];
 
         setStories(transformedStories);
       } catch (err) {
@@ -89,8 +89,8 @@ const SuccessStoriesAdmin = () => {
 
   const handleApprove = async (id: number) => {
     try {
-      const response = await apiFetch(`/api/stories/${id}/approve`, {
-        method: 'PATCH',
+      const response = await apiFetch(`/api/admin/stories/${id}/approve`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         }
@@ -111,8 +111,8 @@ const SuccessStoriesAdmin = () => {
 
   const handleReject = async (id: number) => {
     try {
-      const response = await apiFetch(`/api/stories/${id}/reject`, {
-        method: 'PATCH',
+      const response = await apiFetch(`/api/admin/stories/${id}/reject`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         }
@@ -134,11 +134,9 @@ const SuccessStoriesAdmin = () => {
   const handleDelete = async (id: number) => {
     if (window.confirm('Are you sure you want to delete this story?')) {
       try {
-        const response = await apiFetch(`/api/stories/${id}`, {
-          method: 'DELETE'
-        });
-
-        if (!response.ok) {
+      const response = await apiFetch(`/api/admin/stories/${id}`, {
+        method: 'DELETE'
+      });        if (!response.ok) {
           throw new Error('Failed to delete story');
         }
 
@@ -168,8 +166,7 @@ const SuccessStoriesAdmin = () => {
           submitterEmail: newStory.email,
           title: newStory.title,
           content: newStory.story,
-          tags: newStory.tags.split(',').map(tag => tag.trim()),
-          type: newStory.type
+          tags: newStory.tags.split(',').map(tag => tag.trim())
         })
       });
 

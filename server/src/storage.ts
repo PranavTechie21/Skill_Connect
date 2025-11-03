@@ -291,9 +291,21 @@ export class Storage {
     submitterEmail?: string;
     authorId: string | null;
     createdAt: Date;
-  }): Promise<Story> {
+  }): Promise<{
+    id: number;
+    title: string;
+    content: string;
+    authorId: string | null;
+    submitterName: string | null;
+    submitterEmail: string | null;
+    tags: string[];
+    createdAt: Date;
+  }> {
     try {
       console.log('Creating story with data:', story);
+
+      // Reset the sequence to prevent duplicate key errors
+      await db.execute(sql`SELECT setval('stories_id_seq', (SELECT COALESCE(MAX(id) + 1, 1) FROM stories), false);`);
       
       // Ensure tags is an array and has no empty strings
       const cleanTags = (story.tags || []).filter(tag => tag.trim().length > 0);
@@ -461,18 +473,28 @@ export class Storage {
   }
 
   // Stories methods
-  async getStories(): Promise<Story[]> {
+  async getPaginatedStories(limit: number, offset: number): Promise<Story[]> {
     try {
       const result = await db.execute(sql`
         SELECT * FROM stories 
         ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
       `);
       return result.rows as Story[];
     } catch (error) {
-      console.error('Error in getStories:', error);
-      if (error instanceof Error && error.message.includes('ECONNREFUSED')) {
-        throw new Error('Database connection failed - please check if database is running');
-      }
+      console.error('Error in getPaginatedStories:', error);
+      throw error;
+    }
+  }
+
+  async getStoryCount(): Promise<number> {
+    try {
+      const result = await db.execute(sql`
+        SELECT COUNT(*) as count FROM stories
+      `);
+      return parseInt(String(result.rows[0]?.count || '0'));
+    } catch (error) {
+      console.error('Error in getStoryCount:', error);
       throw error;
     }
   }

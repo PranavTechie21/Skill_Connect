@@ -1,29 +1,37 @@
 import { Router } from "express";
-import { authenticateToken } from "../middleware/auth";
 import { db } from "../db";
 import { stories } from "../schema";
 import { eq } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 const router = Router();
 
-// Submit a new success story
-router.post("/submit", authenticateToken, async (req, res) => {
+// Submit a new success story (no authentication required)
+router.post("/", async (req, res) => {
   try {
-    const { name, email, title, story } = req.body;
+    const { name, email, title, content, tags } = req.body;
     
     // Validate required fields
-    if (!name || !email || !title || !story) {
-      return res.status(400).json({ error: "All fields are required" });
+    if (!title || !content) {
+      return res.status(400).json({ 
+        error: "Missing required fields",
+        message: "Title and content are required" 
+      });
     }
+
+    // Reset the sequence to ensure we don't get duplicate key errors
+    await db.execute(sql`SELECT setval('stories_id_seq', COALESCE((SELECT MAX(id) FROM stories), 0), true);`);
 
     // Insert the story into the database
     const [newStory] = await db.insert(stories).values({
-      name,
-      email,
       title,
-      content: story,
-      createdAt: new Date(),
-      approved: false // Stories need admin approval before being shown
+      content,
+      tags: tags || [],
+      authorId: null,
+      submitterName: name,
+      submitterEmail: email,
+      approved: true,
+      createdAt: new Date()
     }).returning();
 
     res.status(201).json({
@@ -37,7 +45,7 @@ router.post("/submit", authenticateToken, async (req, res) => {
 });
 
 // Get all stories (for admin)
-router.get("/admin", authenticateToken, async (req, res) => {
+router.get("/admin", async (req, res) => {
   try {
     const allStories = await db.select().from(stories);
     res.json(allStories);
@@ -47,35 +55,44 @@ router.get("/admin", authenticateToken, async (req, res) => {
   }
 });
 
-// Get approved stories (for public view)
+// Get paginated stories (for public view)
 router.get("/", async (req, res) => {
   try {
-    const approvedStories = await db.select()
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const offset = (page - 1) * limit;
+
+    // Get total count of approved stories
+    const countResult = await db.select({
+      count: sql<number>`CAST(COUNT(*) AS INTEGER)`
+    })
+    .from(stories)
+    .where(eq(stories.approved, true));
+    const count = Number(countResult[0]?.count || 0);
+
+    // Get paginated approved stories
+    const paginatedStories = await db.select()
       .from(stories)
-      .where(eq(stories.approved, true));
-    res.json(approvedStories);
+      .where(eq(stories.approved, true))
+      .orderBy(sql`${stories.createdAt} DESC`) // Show newest first
+      .limit(limit)
+      .offset(offset);
+
+    res.json({
+      stories: paginatedStories,
+      meta: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit)
+      }
+    });
   } catch (error) {
-    console.error("Error fetching approved stories:", error);
+    console.error("Error fetching stories:", error);
     res.status(500).json({ error: "Failed to fetch stories" });
   }
 });
 
-// Approve or reject a story (admin only)
-router.patch("/:id/approve", authenticateToken, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { approved } = req.body;
 
-    const [updatedStory] = await db.update(stories)
-      .set({ approved })
-      .where(eq(stories.id, id))
-      .returning();
-
-    res.json(updatedStory);
-  } catch (error) {
-    console.error("Error updating story approval:", error);
-    res.status(500).json({ error: "Failed to update story approval status" });
-  }
-});
 
 export default router;

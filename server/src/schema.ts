@@ -73,15 +73,12 @@ export const applications = pgTable("applications", {
 
 export const stories = pgTable("stories", {
   id: serial("id").primaryKey(),
-  title: varchar("title", { length: 255 }).notNull(),
+  title: text("title").notNull(),
   content: text("content").notNull(),
-  tags: text("tags").array().notNull().default([]),
-  submitterName: varchar("submitter_name", { length: 255 }), // Optional for logged in users
-  submitterEmail: varchar("submitter_email", { length: 255 }), // Optional for logged in users
-  authorId: text("author_id"), // For logged in users
-  approved: boolean("approved").notNull().default(false),
-  featured: boolean("featured").notNull().default(false),
-  views: integer("views").notNull().default(0),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  authorId: text("author_id"),
+  submitterName: text("submitter_name"),
+  submitterEmail: text("submitter_email"),
+  tags: text("tags").array().default([]),
+  approved: boolean("approved").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

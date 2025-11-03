@@ -72,7 +72,7 @@ export default function Login() {
       const loggedInUser = await auth.login(form.email, form.password);
       
       console.log("Login response user:", loggedInUser);
-      console.log("Login response userType:", loggedInUser.userType);
+      console.log("Login response userType:", loggedInUser?.userType);
       
       toast({ 
         title: "Success", 

@@ -16,10 +16,22 @@ interface Story {
   createdAt: string;
   author?: {
     firstName: string;
-    lastName:string;
+    lastName: string;
   };
   // Support for stories submitted by non-users
-  submitter_name?: string;
+  submitterName?: string;
+  submitterEmail?: string;
+  tags?: string[];
+}
+
+interface PaginatedResponse {
+  stories: Story[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
 }
 
 // The original three success stories to ensure they are always available for display.
@@ -29,21 +41,21 @@ const fallbackStories: Story[] = [
     id: "fallback-1",
     title: "From Unemployed to Full-Stack Developer",
     content: "I was struggling to find a job for months. SkillConnect helped me find a company that valued my skills and now I am a full-stack developer.",
-    submitter_name: "Ravi Kumar",
+    submitterName: "Ravi Kumar",
     createdAt: "2023-10-26T10:00:00Z", // Fictional date to help with sorting
   },
   {
     id: "fallback-2",
     title: "My First Freelance Gig",
     content: "I was new to freelancing and didn't know where to start. SkillConnect helped me find my first client and now I have a steady stream of work.",
-    submitter_name: "Aarti Verma",
+    submitterName: "Aarti Verma",
     createdAt: "2023-10-25T11:00:00Z",
   },
   {
     id: "fallback-3",
     title: "Landed My Dream Job",
     content: "I always wanted to work for a big tech company. SkillConnect helped me get an interview with my dream company and I got the job!",
-    submitter_name: "Neha Singh",
+    submitterName: "Neha Singh",
     createdAt: "2023-10-24T12:00:00Z",
   },
 ];
@@ -52,7 +64,7 @@ const StoryCard = ({ story, index }: { story: Story, index: number }) => {
   // Determine the author's name from different possible data structures
   const authorName = story.author 
     ? `${story.author.firstName} ${story.author.lastName}` 
-    : story.submitter_name || "Anonymous";
+    : story.submitterName || "Anonymous";
 
   return (
     <motion.div
@@ -85,36 +97,45 @@ export default function OurStories() {
   
   const [stories, setStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalStories, setTotalStories] = useState(0);
+  const storiesPerPage = 12;
 
   useEffect(() => {
     const fetchStories = async () => {
       try {
-        const response = await apiFetch("/api/stories");
+        const response = await apiFetch(`/api/stories?page=${currentPage}&limit=${storiesPerPage}`);
         if (!response.ok) throw new Error("Failed to fetch stories");
         
-        const storiesData = await response.json();
+        const data: PaginatedResponse = await response.json();
+        
+        // If it's the first page, include fallback stories
+        let allStories = data.stories;
+        if (currentPage === 1) {
+          allStories = [...allStories, ...fallbackStories];
+        }
 
-        // Combine fetched stories with the fallback stories
-        const combinedStories = [...storiesData, ...fallbackStories];
-
-        // Remove duplicates based on title and author name, preferring fresh data over fallback
-        const uniqueStories = Array.from(new Map(combinedStories.map(story => [`${story.title}-${story.submitter_name || (story.author ? `${story.author.firstName} ${story.author.lastName}` : '')}`, story])).values());
-
-        const allStories = uniqueStories
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-        setStories(allStories.slice(0, 3)); // Get the 3 most recent stories
+        // Sort stories by date
+        allStories.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        
+        setStories(allStories);
+        setTotalPages(data.meta.totalPages);
+        setTotalStories(data.meta.total);
       } catch (error) {
         toast({
           title: "Error",
           description: "Could not load success stories.",
           variant: "destructive",
         });
+        // On error, show fallback stories
+        setStories(fallbackStories);
       } finally {
         setLoading(false);
       }
     };
     fetchStories();
-  }, [toast]);
+  }, [currentPage, toast]);
 
   const handleShareClick = () => navigate("/submit-story");
 
@@ -163,9 +184,9 @@ export default function OurStories() {
         </motion.section>
 
         {/* Stories Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
           {loading ? (
-            Array.from({ length: 3 }).map((_, index) => (
+            Array.from({ length: storiesPerPage }).map((_, index) => (
               <Card key={index} className="h-full">
                 <CardHeader className="pb-4">
                   <Skeleton className="h-6 w-3/4" />
@@ -181,6 +202,38 @@ export default function OurStories() {
               <StoryCard key={story.id} story={story} index={index} />
             ))}
         </section>
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && (
+          <section className="flex justify-center items-center gap-2 mb-20">
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <div className="flex items-center gap-1 mx-4">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  onClick={() => setCurrentPage(page)}
+                  className="w-10 h-10 p-0"
+                >
+                  {page}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </section>
+        )}
 
         {/* CTA Section */}
         <motion.section

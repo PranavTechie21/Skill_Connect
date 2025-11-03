@@ -54,7 +54,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<User>;
+  login: (email: string, password: string) => Promise<User | null>;
   register: (userData: any) => Promise<User>;
   logout: () => Promise<void>;
   setUser: (u: User | null) => void; // exposed for components that need to set user manually
@@ -99,12 +99,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         data = await res.json();
       } catch (e) {
-        console.warn("Failed to parse auth response:", e);
+        // For 401/403, this is expected for unauthenticated users
+        if (res.status !== 401 && res.status !== 403) {
+          console.warn("Failed to parse auth response:", e);
+        }
         data = {};
       }
 
       if (!res.ok) {
-        setUserState(null); // Only set state if not cancelled
+        // For 401/403, this is normal for unauthenticated users
+        if (res.status !== 401 && res.status !== 403) {
+          console.warn(`Auth check failed with status ${res.status}`);
+        }
+        setUserState(null);
         return;
       }
 
@@ -112,8 +119,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       setUserState(returnedUser);
     } catch (err: any) {
       if (err.name === "AbortError") {
-        console.warn("Request aborted:", err);
+        // This is normal during component unmount
+        return;
       } else {
+        // Only log other errors
         console.error("Auth check failed:", err);
         setUserState(null);
       }
@@ -130,7 +139,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const setUser = (u: User | null) => setUserState(u);
 
-  const login = async (email: string, password: string): Promise<User> => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     setIsLoading(true);
     try {
       // Always use backend for login, including admin
@@ -154,7 +163,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (!res.ok) {
-        // For 500 errors, provide a more user-friendly message.
+        // For 401 or 403 errors, just log out silently without error
+        if (res.status === 401 || res.status === 403) {
+          setUserState(null);
+          return null;
+        }
+        // For 500 errors, provide a more user-friendly message
         if (res.status === 500) {
           throw new Error("A server error occurred. Please try again later.");
         }
