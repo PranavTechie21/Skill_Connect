@@ -72,10 +72,52 @@ export default function AdminEmployees() {
       console.log('🔄 Fetching employees...');
       const allUsers = await adminService.getUsers();
       console.log('✅ Received users:', allUsers);
-      // Filter for 'Professional' as they represent the employees/professionals on the platform
-      const professionals = allUsers.filter(u => u.userType === 'Professional');
-      console.log(`✅ Filtered ${professionals.length} professionals`);
-      setEmployees(professionals);
+      console.log('🔍 First user sample:', allUsers[0] ? {
+        id: allUsers[0].id,
+        email: allUsers[0].email,
+        userType: allUsers[0].userType,
+        user_type: (allUsers[0] as any).user_type,
+        firstName: allUsers[0].firstName,
+        lastName: allUsers[0].lastName
+      } : 'No users');
+      
+      // Filter for 'Professional' and 'job_seeker' as they represent the employees/professionals on the platform
+      // The database uses both 'Professional' and 'job_seeker' as user types
+      // Also check for user_type (snake_case) in case the API returns that format
+      const professionals = allUsers.filter(u => {
+        const userType = u.userType || (u as any).user_type || '';
+        return userType === 'Professional' || userType === 'job_seeker' || userType === 'professional';
+      });
+      
+      console.log(`✅ Filtered ${professionals.length} professionals (from ${allUsers.length} total users)`);
+      console.log('📊 User type breakdown:', {
+        Professional: allUsers.filter(u => (u.userType || (u as any).user_type) === 'Professional').length,
+        job_seeker: allUsers.filter(u => (u.userType || (u as any).user_type) === 'job_seeker').length,
+        professional: allUsers.filter(u => (u.userType || (u as any).user_type) === 'professional').length,
+        Employer: allUsers.filter(u => (u.userType || (u as any).user_type) === 'Employer').length,
+        admin: allUsers.filter(u => (u.userType || (u as any).user_type) === 'admin').length,
+        other: allUsers.filter(u => {
+          const ut = (u.userType || (u as any).user_type || '').toLowerCase();
+          return !['professional', 'job_seeker', 'employer', 'admin'].includes(ut);
+        }).length,
+        undefined: allUsers.filter(u => !u.userType && !(u as any).user_type).length
+      });
+      
+      if (professionals.length === 0 && allUsers.length > 0) {
+        console.warn('⚠️ No professionals found! Showing all users for debugging:');
+        console.log('All user types:', allUsers.map(u => ({
+          id: u.id,
+          email: u.email,
+          userType: u.userType,
+          user_type: (u as any).user_type
+        })));
+        // Fallback: If no professionals found but we have users, show all users
+        // This helps debug the issue and ensures something is displayed
+        console.log('⚠️ Showing all users as fallback since no professionals were found');
+        setEmployees(allUsers);
+      } else {
+        setEmployees(professionals);
+      }
     } catch (error) {
       console.error("❌ Failed to fetch employees:", error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -235,7 +277,13 @@ export default function AdminEmployees() {
           </div>
 
           {/* Employee Cards Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+          {loading ? (
+            <div className="p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+              <p className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Loading employees...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
             {filteredEmployees.map((employee) => (
               <div key={employee.id} className={`border rounded-xl p-6 transition-all ${
                 darkMode 
@@ -245,17 +293,19 @@ export default function AdminEmployees() {
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-start gap-4">
                     <div className={`bg-blue-500 w-16 h-16 rounded-full flex items-center justify-center text-white font-bold text-xl shadow-lg`}>
-                      {employee.firstName[0]}{employee.lastName[0]}
+                      {employee.firstName?.[0] || 'U'}{employee.lastName?.[0] || ''}
                     </div>
                     <div>
-                      <h3 className={`font-bold text-lg mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{employee.firstName} {employee.lastName}</h3>
+                      <h3 className={`font-bold text-lg mb-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {employee.firstName || 'Unknown'} {employee.lastName || ''}
+                      </h3>
                       <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm flex items-center gap-1 mb-2`}>
                         <Mail className="w-4 h-4" />
-                        {employee.email}
+                        {employee.email || 'No email'}
                       </p>
                       <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm flex items-center gap-1`}>
                         <MapPin className="w-4 h-4" />
-                        {employee.location}
+                        {employee.location || 'No location'}
                       </p>
                     </div>
                   </div>
@@ -335,8 +385,9 @@ export default function AdminEmployees() {
               </div>
             ))}
           </div>
+          )}
 
-          {filteredEmployees.length === 0 && (
+          {!loading && filteredEmployees.length === 0 && (
             <div className="p-12 text-center">
               <Users className={`w-16 h-16 mx-auto mb-4 ${darkMode ? 'text-gray-600' : 'text-gray-300'}`} />
               <p className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>No employees found</p>

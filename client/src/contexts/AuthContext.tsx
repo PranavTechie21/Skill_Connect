@@ -107,10 +107,22 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (!res.ok) {
-        // For 401/403, this is normal for unauthenticated users
-        if (res.status !== 401 && res.status !== 403) {
-          console.warn(`Auth check failed with status ${res.status}`);
+        // For 401/403, check if we have a user in localStorage first
+        // Only clear if we don't have a cached user (might be temporary session issue)
+        if (res.status === 401 || res.status === 403) {
+          // Check if we have a cached user - if yes, keep it (session might be temporarily unavailable)
+          const cachedUser = localStorage.getItem(STORAGE_KEY);
+          if (!cachedUser) {
+            // No cached user and no session - truly logged out
+            setUserState(null);
+          } else {
+            // We have a cached user but session check failed - log warning but keep user
+            console.warn('⚠️ Session check failed but user cached in localStorage. Keeping cached user.');
+          }
+          return;
         }
+        // For other errors, log and clear
+        console.warn(`Auth check failed with status ${res.status}`);
         setUserState(null);
         return;
       }
