@@ -219,24 +219,44 @@ const AdminDashboard: React.FC = () => {
 
   const handleToggleJobStatus = async (job: any) => {
     try {
-      const newStatus = job.status === 'active' ? 'paused' : 'active';
-      const svc: any = adminService;
+      // Determine current status - check multiple possible fields
+      const currentStatus = job.status || 
+                           (job.is_active === false ? 'paused' : 'active') ||
+                           (job.isActive === false ? 'paused' : 'active') ||
+                           'active';
+      
+      // Toggle between active and paused
+      const newStatus = currentStatus === 'active' || currentStatus === 'Active' ? 'paused' : 'active';
+      
+      console.log('🔄 Toggling job status:', {
+        jobId: job.id,
+        currentStatus: currentStatus,
+        newStatus: newStatus,
+        jobData: {
+          status: job.status,
+          is_active: job.is_active,
+          isActive: job.isActive
+        }
+      });
 
-      // Prefer a dedicated updateJobStatus method if present, otherwise fall back to a generic updateJob
-      if (typeof svc.updateJobStatus === 'function') {
-        await svc.updateJobStatus(job.id, newStatus);
-      } else if (typeof svc.updateJob === 'function') {
-        await svc.updateJob(job.id, { status: newStatus });
-      } else {
-        // If no suitable method exists at runtime, surface a clear error
-        throw new Error('No method available on adminService to update job status');
-      }
+      // Use updateJob method
+      await adminService.updateJob(job.id, { status: newStatus });
 
-      toast({ title: "Success", description: `Job ${newStatus === 'active' ? 'activated' : 'paused'} successfully.` });
+      toast({ 
+        title: "Success", 
+        description: `Job ${newStatus === 'active' ? 'activated' : 'paused'} successfully.` 
+      });
+      
+      // Reload jobs to get updated data
       loadJobs();
     } catch (error) {
-      console.error("Failed to update job status:", error);
-      toast({ title: "Error", description: "Failed to update job status.", variant: "destructive" });
+      console.error("❌ Failed to update job status:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast({ 
+        title: "Error", 
+        description: `Failed to update job status: ${errorMessage}`, 
+        variant: "destructive" 
+      });
     }
   };
 
@@ -271,9 +291,32 @@ const AdminDashboard: React.FC = () => {
         // Process jobs data
         console.log('Processing jobs data:', jobsResult);
         const processedJobs = jobsResult?.jobs || jobsResult || [];
-        const activeJobsCount = processedJobs.filter((job: any) => 
-          job.status === 'active' || (!job.status && !job.isClosed && !job.isPaused)
-        ).length;
+        
+        // Count active jobs - check multiple conditions to match database
+        const activeJobsCount = processedJobs.filter((job: any) => {
+          // Check if job is active based on various possible fields
+          const isActive = 
+            job.is_active === true || 
+            job.isActive === true ||
+            job.status === 'active' || 
+            job.status === 'Active' ||
+            (!job.status && !job.isClosed && !job.isPaused && job.is_active !== false);
+          return isActive;
+        }).length;
+        
+        console.log('📊 Jobs breakdown:', {
+          totalJobs: processedJobs.length,
+          activeJobs: activeJobsCount,
+          sampleJob: processedJobs[0] ? {
+            id: processedJobs[0].id,
+            title: processedJobs[0].title,
+            status: processedJobs[0].status,
+            is_active: processedJobs[0].is_active,
+            isActive: processedJobs[0].isActive,
+            isClosed: processedJobs[0].isClosed,
+            isPaused: processedJobs[0].isPaused
+          } : 'No jobs found'
+        });
         
         const now = new Date();
         const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -300,13 +343,18 @@ const AdminDashboard: React.FC = () => {
         // Process data for Recent Activity feed
         const newUsersActivity = (usersData || [])
           .slice(0, 2)
-          .map(user => ({
-            type: 'user',
-            action: `New user registered: ${user.firstName} ${user.lastName}`,
-            user: user.email,
-            time: new Date(user.createdAt).toLocaleDateString(),
-            id: `user-${user.id}`
-          }));
+          .map(user => {
+            const firstName = user.firstName || '';
+            const lastName = user.lastName || '';
+            const fullName = `${firstName} ${lastName}`.trim() || user.email || 'Unknown User';
+            return {
+              type: 'user',
+              action: `New user registered: ${fullName}`,
+              user: user.email,
+              time: user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A',
+              id: `user-${user.id}`
+            };
+          });
 
         const newJobsActivity = processedJobs
           .slice(0, 2)
@@ -320,23 +368,105 @@ const AdminDashboard: React.FC = () => {
 
         const combinedActivity = [...newUsersActivity, ...newJobsActivity].sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
+        // Count professionals/employees only (not all users)
+        const professionals = (usersData || []).filter((user: any) => {
+          const userType = user.userType || (user as any).user_type || '';
+          return userType === 'Professional' || userType === 'job_seeker' || userType === 'professional';
+        });
+        
+        const newProfessionalsThisWeek = professionals.filter((user: any) => {
+          const userDate = new Date(user.createdAt);
+          return userDate >= weekAgo;
+        }).length;
+
+        // Calculate new users this week (all users, not just professionals) for User Management badge
+        const newUsersThisWeekAll = (usersData || []).filter((user: any) => {
+          const userDate = new Date(user.createdAt);
+          return userDate >= weekAgo;
+        }).length;
+
         const processedStats = {
-          ...(statsData || {}),
+          // Override API stats with our calculated values
           pendingApprovals: pendingApprovalsCount,
           activeJobs: activeJobsCount,
           totalJobs: processedJobs.length,
           newJobsThisWeek,
           newJobsThisMonth,
-          totalUsers: (usersData || []).length,
-          newUsersThisWeek: (usersData || []).filter((user: any) => {
-            const userDate = new Date(user.createdAt);
-            return userDate >= weekAgo;
-          }).length,
-          totalCompanies
+          totalUsers: professionals.length, // Only count professionals/employees
+          totalAllUsers: (usersData || []).length, // All users (for the Users card)
+          newUsersThisWeek: newUsersThisWeekAll, // New users this week (all users) for User Management badge
+          newProfessionalsThisWeek: newProfessionalsThisWeek, // New professionals this week
+          totalCompanies,
+          // Keep other stats from API if needed
+          totalApplications: statsData?.totalApplications || 0,
+          newCompaniesThisWeek: statsData?.newCompaniesThisWeek || 0,
+          newApplicationsThisWeek: statsData?.newApplicationsThisWeek || 0
         };
         
+        console.log('📊 Navigation badges:', {
+          newUsersThisWeek: newUsersThisWeekAll,
+          pendingApprovals: pendingApprovalsCount,
+          newJobsThisWeek: newJobsThisWeek,
+          approvalsDataLength: approvalsData?.length
+        });
+        
+        console.log('📊 Dashboard stats calculation:', {
+          fromAPI: {
+            totalUsers: statsData?.totalUsers,
+            activeJobs: statsData?.activeJobs,
+            totalCompanies: statsData?.totalCompanies
+          },
+          calculated: {
+            totalProfessionals: professionals.length,
+            totalAllUsers: (usersData || []).length,
+            activeJobs: activeJobsCount,
+            totalJobs: processedJobs.length,
+            totalCompanies: totalCompanies
+          },
+          finalStats: {
+            totalUsers: processedStats.totalUsers,
+            totalAllUsers: processedStats.totalAllUsers,
+            activeJobs: processedStats.activeJobs,
+            totalJobs: processedStats.totalJobs,
+            totalCompanies: processedStats.totalCompanies
+          }
+        });
+        
         setStats(processedStats);
-        setRecentUsers((usersData || []).slice(0, 5));
+        // Ensure we have firstName and lastName for Recent Users
+        // Map both camelCase and snake_case fields
+        const recentUsersWithNames = (usersData || []).slice(0, 5).map((user: any) => {
+          const firstName = user.firstName || user.first_name || '';
+          const lastName = user.lastName || user.last_name || '';
+          const displayName = firstName && lastName 
+            ? `${firstName} ${lastName}`.trim()
+            : firstName || lastName || 'Unknown User';
+          
+          // Log first user for debugging
+          if ((usersData || []).indexOf(user) === 0) {
+            console.log('🔍 Processing first user for Recent Users:', {
+              id: user.id,
+              email: user.email,
+              firstName: firstName,
+              lastName: lastName,
+              displayName: displayName,
+              rawUser: {
+                firstName: user.firstName,
+                lastName: user.lastName,
+                first_name: user.first_name,
+                last_name: user.last_name
+              }
+            });
+          }
+          
+          return {
+            ...user,
+            firstName: firstName,
+            lastName: lastName,
+            displayName: displayName
+          };
+        });
+        setRecentUsers(recentUsersWithNames);
         setRecentJobs(processedJobs.slice(0, 5));
         setRecentActivity(combinedActivity.slice(0, 4));
       } catch (error) {
@@ -385,7 +515,7 @@ const AdminDashboard: React.FC = () => {
         <Icon className="w-5 h-5" />
         <span className="font-medium">{label}</span>
       </div>
-      {badge && (
+      {badge !== undefined && badge !== null && badge > 0 && (
         <span className={`px-3 py-1.5 rounded-full text-xs font-bold shadow-md ${
           darkMode ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white' : 'bg-gradient-to-r from-red-600 to-rose-600 text-white'
         }`}>
@@ -601,12 +731,12 @@ const AdminDashboard: React.FC = () => {
 
           <div className="flex">
             {/* Sidebar */}
-            <aside className={`fixed inset-y-0 left-0 transform transition-all duration-300 ${
+            <aside className={`fixed top-16 bottom-0 left-0 transform transition-all duration-300 ${
               sidebarOpen ? 'translate-x-0' : '-translate-x-full'
             } w-80 border-r ${
               darkMode ? 'bg-gray-800/95 border-gray-700 backdrop-blur-xl' : 'bg-white/95 border-gray-200 backdrop-blur-xl'
-            } z-40`}>
-              <div className="p-6 space-y-6 h-full overflow-y-auto">
+            } z-40 overflow-y-auto`}>
+              <div className="p-6 space-y-6">
                 {/* Quick Stats */}
                 <div>
                   <h3 className={`text-xs font-bold uppercase tracking-wider mb-5 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -616,14 +746,14 @@ const AdminDashboard: React.FC = () => {
                     <div className={`p-4 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer ${darkMode ? 'bg-gradient-to-br from-red-500/20 to-rose-500/20 border border-red-500/30' : 'bg-gradient-to-br from-red-50 to-rose-50 border border-red-200'}`}>
                       <Users className={`w-6 h-6 mb-2 ${darkMode ? 'text-red-400' : 'text-red-600'}`} />
                       <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {stats.totalUsers || 0}
+                        {stats?.totalUsers ?? 0}
                       </p>
-                      <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Users</p>
+                      <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Employees</p>
                     </div>
                     <div className={`p-4 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer ${darkMode ? 'bg-gradient-to-br from-blue-500/20 to-indigo-500/20 border border-blue-500/30' : 'bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200'}`}>
                       <Briefcase className={`w-6 h-6 mb-2 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
                       <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {stats.activeJobs || 0}
+                        {stats?.activeJobs ?? 0}
                       </p>
                       <p className={`text-xs font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Active Jobs</p>
                     </div>
@@ -688,7 +818,7 @@ const AdminDashboard: React.FC = () => {
             </aside>
 
             {/* Main Content */}
-            <main className={`flex-1 min-h-screen pt-28 px-6 pb-6 transition-transform duration-300 ${sidebarOpen ? 'lg:pl-80' : ''}`}>
+            <main className={`flex-1 min-h-screen pt-28 px-6 pb-6 transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : 'ml-0'}`}>
               <div className="max-w-[1800px] mx-auto space-y-6">
                 {/* Header with Welcome Message */}
                 <div className={`rounded-2xl p-8 shadow-xl ${darkMode ? 'bg-gray-800/90 border-gray-700' : 'bg-white/90 border-gray-200'} backdrop-blur-xl`}>
@@ -718,7 +848,35 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 {/* Stats Cards - Enhanced */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+                  {/* 1. Total Users */}
+                  <div className={`rounded-2xl border p-6 hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden ${
+                    darkMode ? 'bg-gray-800 border-gray-700 hover:border-purple-500' : 'bg-white border-gray-200 hover:border-purple-300'
+                  }`}>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                          <Users className="w-6 h-6 text-white" />
+                        </div>
+                        <Zap className="w-5 h-5 text-purple-500 opacity-50" />
+                      </div>
+                      <p className={`text-sm font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Total Users
+                      </p>
+                      <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {stats.totalAllUsers || 0}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                        <span className="text-sm font-medium text-emerald-500">
+                          All accounts
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Total Employees */}
                   <div className={`rounded-2xl border p-6 hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden ${
                     darkMode ? 'bg-gray-800 border-gray-700 hover:border-blue-500' : 'bg-white border-gray-200 hover:border-blue-300'
                   }`}>
@@ -726,12 +884,12 @@ const AdminDashboard: React.FC = () => {
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-4">
                         <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
-                          <Users className="w-6 h-6 text-white" />
+                          <UserCheck className="w-6 h-6 text-white" />
                         </div>
                         <Zap className="w-5 h-5 text-blue-500 opacity-50" />
                       </div>
                       <p className={`text-sm font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Total Users
+                        Total Employees
                       </p>
                       <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                         {stats.totalUsers || 0}
@@ -745,6 +903,7 @@ const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* 3. Total Companies */}
                   <div className={`rounded-2xl border p-6 hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden ${
                     darkMode ? 'bg-gray-800 border-gray-700 hover:border-green-500' : 'bg-white border-gray-200 hover:border-green-300'
                   }`}>
@@ -765,12 +924,13 @@ const AdminDashboard: React.FC = () => {
                       <div className="flex items-center gap-2 mt-2">
                         <TrendingUp className="w-4 h-4 text-emerald-500" />
                         <span className="text-sm font-medium text-emerald-500">
-                          +5 this month
+                          +{stats.newCompaniesThisWeek || 0} this week
                         </span>
                       </div>
                     </div>
                   </div>
 
+                  {/* 4. Total Jobs */}
                   <div className={`rounded-2xl border p-6 hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden ${
                     darkMode ? 'bg-gray-800 border-gray-700 hover:border-amber-500' : 'bg-white border-gray-200 hover:border-amber-300'
                   }`}>
@@ -782,69 +942,43 @@ const AdminDashboard: React.FC = () => {
                         </div>
                         <Award className="w-5 h-5 text-amber-500 opacity-50" />
                       </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <p className={`text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                            Active Jobs
-                          </p>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700'
-                          }`}>
-                            Total: {stats.totalJobs || 0}
-                          </span>
-                        </div>
-                        <p className={`text-4xl font-bold tracking-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {stats.activeJobs || 0}
-                        </p>
-                        <div className="flex items-center gap-2">
-                          {stats.newJobsThisWeek > 0 ? (
-                            <>
-                              <TrendingUp className="w-4 h-4 text-emerald-500" />
-                              <span className="text-sm font-medium text-emerald-500">
-                                +{stats.newJobsThisWeek} new this week
-                              </span>
-                            </>
-                          ) : stats.activeJobs > 0 ? (
-                            <>
-                              <Activity className="w-4 h-4 text-blue-500" />
-                              <span className="text-sm font-medium text-blue-500">
-                                Currently Active
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle className="w-4 h-4 text-gray-400" />
-                              <span className="text-sm font-medium text-gray-400">
-                                No active jobs
-                              </span>
-                            </>
-                          )}
-                        </div>
+                      <p className={`text-sm font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                        Total Jobs
+                      </p>
+                      <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {stats.totalJobs || 0}
+                      </p>
+                      <div className="flex items-center gap-2 mt-2">
+                        <TrendingUp className="w-4 h-4 text-emerald-500" />
+                        <span className="text-sm font-medium text-emerald-500">
+                          {stats.activeJobs || 0} active
+                        </span>
                       </div>
                     </div>
                   </div>
 
+                  {/* 5. Total Companies (duplicate - keeping as requested) */}
                   <div className={`rounded-2xl border p-6 hover:shadow-2xl transition-all group cursor-pointer relative overflow-hidden ${
-                    darkMode ? 'bg-gray-800 border-gray-700 hover:border-red-500' : 'bg-white border-gray-200 hover:border-red-300'
+                    darkMode ? 'bg-gray-800 border-gray-700 hover:border-indigo-500' : 'bg-white border-gray-200 hover:border-indigo-300'
                   }`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-red-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-indigo-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-4">
-                        <div className="p-3 bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
-                          <AlertCircle className="w-6 h-6 text-white" />
+                        <div className="p-3 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl shadow-lg group-hover:scale-110 transition-transform">
+                          <Building2 className="w-6 h-6 text-white" />
                         </div>
-                        <Bell className="w-5 h-5 text-red-500 opacity-50" />
+                        <Target className="w-5 h-5 text-indigo-500 opacity-50" />
                       </div>
                       <p className={`text-sm font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Pending Approvals
+                        Companies
                       </p>
                       <p className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {stats.pendingApprovals || 0}
+                        {stats.totalCompanies || 0}
                       </p>
                       <div className="flex items-center gap-2 mt-2">
-                        <Clock className="w-4 h-4 text-amber-500" />
-                        <span className="text-sm font-medium text-amber-500">
-                          Needs attention
+                        <Activity className="w-4 h-4 text-blue-500" />
+                        <span className="text-sm font-medium text-blue-500">
+                          Registered
                         </span>
                       </div>
                     </div>
@@ -884,22 +1018,25 @@ const AdminDashboard: React.FC = () => {
                             darkMode ? 'border-gray-700 hover:bg-gray-700/50' : 'border-gray-200 hover:bg-gray-50'
                           }`}>
                             <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-base shadow-lg bg-gradient-to-br ${
+                              <div className={`w-14 h-14 rounded-xl flex items-center justify-center font-bold text-lg shadow-lg bg-gradient-to-br ${
                                 isEmployer 
                                   ? 'from-purple-500 to-pink-600'
                                   : 'from-blue-500 to-indigo-600'
                               } text-white flex-shrink-0`}>
-                                {user.firstName?.[0] || ''}{user.lastName?.[0] || ''}
+                                {((user.firstName || user.first_name)?.[0] || '').toUpperCase()}{((user.lastName || user.last_name)?.[0] || '').toUpperCase() || (user.email?.[0] || 'U').toUpperCase()}
                               </div>
                               <div className="flex flex-col">
-                                <div className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                                  {user.firstName} {user.lastName}
+                                <div className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {(user.firstName || user.first_name || user.lastName || user.last_name)
+                                    ? `${user.firstName || user.first_name || ''} ${user.lastName || user.last_name || ''}`.trim()
+                                    : 'Unknown User'
+                                  }
                                 </div>
-                                <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                                  {user.email}
+                                <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-500'} mt-1`}>
+                                  {user.email || 'No email'}
                                 </div>
-                                <div className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                                  {user.userType}
+                                <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-400'}`}>
+                                  {user.userType || 'User'}
                                 </div>
                               </div>
                             </div>
@@ -1171,12 +1308,17 @@ const AdminDashboard: React.FC = () => {
                                   <button 
                                     onClick={() => handleToggleJobStatus(job)}
                                     className={`p-2 rounded-lg transition-all ${
-                                      jobStatus === 'active' 
+                                      (jobStatus === 'active' || jobStatus === 'Active' || job.is_active !== false)
                                         ? 'text-amber-500 hover:bg-amber-500/10' 
                                         : 'text-emerald-500 hover:bg-emerald-500/10'
                                     }`}
+                                    title={(jobStatus === 'active' || jobStatus === 'Active' || job.is_active !== false) ? 'Pause Job' : 'Activate Job'}
                                   >
-                                    {jobStatus === 'active' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                                    {(jobStatus === 'active' || jobStatus === 'Active' || job.is_active !== false) ? (
+                                      <Pause className="w-4 h-4" />
+                                    ) : (
+                                      <Play className="w-4 h-4" />
+                                    )}
                                   </button>
                                   <button 
                                     onClick={() => handleDeleteJob(job)}

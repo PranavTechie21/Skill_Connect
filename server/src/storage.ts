@@ -230,6 +230,78 @@ export class Storage {
     }
   }
 
+  async updateJob(id: string, updates: Partial<Job & { status?: string }>): Promise<Job> {
+    try {
+      const setParts: any[] = [];
+      
+      // Map camelCase to snake_case and handle status field
+      if (updates.title !== undefined) {
+        setParts.push(sql`title = ${updates.title}`);
+      }
+      if (updates.description !== undefined) {
+        setParts.push(sql`description = ${updates.description}`);
+      }
+      if (updates.requirements !== undefined) {
+        setParts.push(sql`requirements = ${updates.requirements}`);
+      }
+      if (updates.location !== undefined) {
+        setParts.push(sql`location = ${updates.location}`);
+      }
+      if (updates.jobType !== undefined) {
+        setParts.push(sql`job_type = ${updates.jobType}`);
+      }
+      if (updates.salaryMin !== undefined) {
+        setParts.push(sql`salary_min = ${updates.salaryMin}`);
+      }
+      if (updates.salaryMax !== undefined) {
+        setParts.push(sql`salary_max = ${updates.salaryMax}`);
+      }
+      if (updates.skills !== undefined) {
+        setParts.push(sql.raw(`skills = '${JSON.stringify(updates.skills).replace(/'/g, "''")}'::jsonb`));
+      }
+      if (updates.companyId !== undefined) {
+        setParts.push(sql`company_id = ${updates.companyId}`);
+      }
+      if (updates.employerId !== undefined) {
+        setParts.push(sql`employer_id = ${updates.employerId}`);
+      }
+      
+      // Handle status field - map 'active'/'paused' to is_active boolean
+      if ((updates as any).status !== undefined) {
+        const status = (updates as any).status;
+        const isActive = status === 'active' || status === 'Active';
+        setParts.push(sql`is_active = ${isActive}`);
+      } else if (updates.isActive !== undefined) {
+        setParts.push(sql`is_active = ${updates.isActive}`);
+      }
+
+      if (setParts.length === 0) {
+        throw new Error('No fields to update');
+      }
+
+      // Build the SET clause by joining all parts
+      const setClause = setParts.reduce((acc, curr, index) => {
+        return index === 0 ? curr : sql`${acc}, ${curr}`;
+      });
+
+      const result = await db.execute(sql`
+        UPDATE jobs 
+        SET ${setClause}
+        WHERE id = ${id}
+        RETURNING *
+      `);
+      
+      if (!result.rows || result.rows.length === 0) {
+        throw new Error('Job not found');
+      }
+
+      return castDbResult<Job>(result.rows[0]);
+    } catch (error) {
+      console.error('Error in updateJob:', error);
+      throw error;
+    }
+  }
+
 
 
   async getCompany(id: string) {

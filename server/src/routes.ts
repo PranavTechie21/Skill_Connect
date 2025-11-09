@@ -121,7 +121,16 @@ const requireAdmin = async (req: any, res: any, next: any) => {
 
 const sanitizeUser = (user: any) => {
   const { password, ...sanitizedUser } = user;
-  return sanitizedUser;
+  // Map snake_case database fields to camelCase for frontend
+  return {
+    ...sanitizedUser,
+    firstName: sanitizedUser.firstName || sanitizedUser.first_name || '',
+    lastName: sanitizedUser.lastName || sanitizedUser.last_name || '',
+    userType: sanitizedUser.userType || sanitizedUser.user_type || '',
+    createdAt: sanitizedUser.createdAt || sanitizedUser.created_at,
+    profilePhoto: sanitizedUser.profilePhoto || sanitizedUser.profile_photo,
+    telephoneNumber: sanitizedUser.telephoneNumber || sanitizedUser.telephone_number,
+  };
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -1331,19 +1340,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const users = await storage.getAllUsers();
       console.log(`✅ Found ${users.length} users in database`);
       
+      // Log first user to see what fields we're getting
+      if (users.length > 0) {
+        console.log('🔍 Sample user from database:', {
+          id: users[0].id,
+          email: users[0].email,
+          first_name: (users[0] as any).first_name,
+          last_name: (users[0] as any).last_name,
+          firstName: (users[0] as any).firstName,
+          lastName: (users[0] as any).lastName,
+          user_type: (users[0] as any).user_type,
+          userType: (users[0] as any).userType
+        });
+      }
+      
       const enrichedUsers = await Promise.all(users.map(async (user) => {
+        const sanitized = sanitizeUser(user);
+        
+        // Log after sanitization to verify mapping
+        if (users.indexOf(user) === 0) {
+          console.log('🔍 Sample user after sanitization:', {
+            id: sanitized.id,
+            email: sanitized.email,
+            firstName: sanitized.firstName,
+            lastName: sanitized.lastName,
+            userType: sanitized.userType
+          });
+        }
+        
         let profile = null;
         let company = null;
 
-        if (user.userType === 'Professional' || user.userType === 'job_seeker') {
+        const userType = sanitized.userType || (user as any).user_type || '';
+        if (userType === 'Professional' || userType === 'job_seeker') {
           profile = await storage.getProfessionalProfileByUserId(user.id);
-        } else if (user.userType === 'Employer') {
+        } else if (userType === 'Employer') {
           const companies = await storage.getCompaniesByOwner(user.id);
           company = companies.length > 0 ? companies[0] : null;
         }
 
         return {
-          ...sanitizeUser(user),
+          ...sanitized,
           profile,
           company
         };
@@ -1482,6 +1519,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(jobs);
     } catch (error) {
       handleError(res, error, "Failed to fetch jobs");
+    }
+  });
+
+  // Admin: Update job
+  app.put("/api/admin/jobs/:id", requireAdmin, async (req, res) => {
+    try {
+      console.log('📝 Updating job:', req.params.id, 'with data:', req.body);
+      const job = await storage.updateJob(req.params.id, req.body);
+      console.log('✅ Job updated successfully:', job.id);
+      res.json(job);
+    } catch (error) {
+      console.error('❌ Error updating job:', error);
+      handleError(res, error, "Failed to update job");
+    }
+  });
+
+  // Admin: Delete job
+  app.delete("/api/admin/jobs/:id", requireAdmin, async (req, res) => {
+    try {
+      // Note: You'll need to add a deleteJob method to storage if it doesn't exist
+      // For now, we can use a direct SQL query
+      await db.execute(sql`DELETE FROM jobs WHERE id = ${req.params.id}`);
+      res.json({ message: "Job deleted successfully" });
+    } catch (error) {
+      handleError(res, error, "Failed to delete job");
     }
   });
 

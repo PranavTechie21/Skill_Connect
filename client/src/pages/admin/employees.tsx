@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AdminBackButton from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import { Users, Search, Plus, Edit, Trash2, MoreVertical, Mail, Calendar, MapPin, Briefcase, Award, TrendingUp, Clock, Filter, Eye, CheckCircle, XCircle } from 'lucide-react';
@@ -149,19 +149,59 @@ export default function AdminEmployees() {
   }, []);
 
   const stats = [
-    { label: 'Total Employees', value: statsData.totalUsers || employees.length, change: `↑ ${statsData.newUsersThisWeek || 0} new this week`, icon: Users, color: 'bg-green-500', bgLight: 'bg-green-50' },
+    { label: 'Total Employees', value: employees.length, change: `↑ ${statsData.newUsersThisWeek || 0} new this week`, icon: Users, color: 'bg-green-500', bgLight: 'bg-green-50' },
     { label: 'Active Users', value: employees.length, change: '100% active rate', icon: CheckCircle, color: 'bg-blue-500', bgLight: 'bg-blue-50' },
     { label: 'Job Applications', value: statsData.totalApplications?.toLocaleString() || '0', change: 'Across all users', icon: Briefcase, color: 'bg-purple-500', bgLight: 'bg-purple-50' },
     { label: 'Profile Views', value: 'N/A', change: 'Metric not available', icon: Eye, color: 'bg-orange-500', bgLight: 'bg-orange-50' }
   ];
 
-  const filteredEmployees = employees.filter(employee => {
-    const name = `${employee.firstName} ${employee.lastName}`;
-    return name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           employee.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-           (employee.location && employee.location.toLowerCase().includes(searchTerm.toLowerCase())) ||
-           (employee.title && employee.title.toLowerCase().includes(searchTerm.toLowerCase()));
-  });
+  const filteredEmployees = useMemo(() => {
+    if (!searchTerm.trim()) {
+      console.log('✅ No search term, showing all', employees.length, 'employees');
+      return employees;
+    }
+    
+    const filtered = employees.filter(employee => {
+      const name = `${employee.firstName || ''} ${employee.lastName || ''}`.trim();
+      const email = employee.email || '';
+      const location = employee.location || '';
+      const title = employee.title || '';
+      
+      const matches = name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             location.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             title.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      return matches;
+    });
+    
+    console.log('🔍 Search filter:', {
+      searchTerm,
+      totalEmployees: employees.length,
+      filteredCount: filtered.length
+    });
+    
+    return filtered;
+  }, [employees, searchTerm]);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('📊 Employees state update:', {
+      totalEmployees: employees.length,
+      filteredCount: filteredEmployees.length,
+      searchTerm: searchTerm,
+      loading: loading
+    });
+    if (employees.length > 0) {
+      console.log('👥 First employee sample:', {
+        id: employees[0].id,
+        firstName: employees[0].firstName,
+        lastName: employees[0].lastName,
+        email: employees[0].email,
+        userType: employees[0].userType
+      });
+    }
+  }, [employees, filteredEmployees, searchTerm, loading]);
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'}`}>
@@ -282,9 +322,11 @@ export default function AdminEmployees() {
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
               <p className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>Loading employees...</p>
             </div>
-          ) : (
+          ) : filteredEmployees.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
-            {filteredEmployees.map((employee) => (
+            {filteredEmployees.map((employee) => {
+              console.log('🎨 Rendering employee:', employee.id, employee.email);
+              return (
               <div key={employee.id} className={`border rounded-xl p-6 transition-all ${
                 darkMode 
                   ? 'border-gray-700 hover:border-green-500/50 bg-gray-800/50'
@@ -383,15 +425,20 @@ export default function AdminEmployees() {
                   </button>
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
-          )}
-
-          {!loading && filteredEmployees.length === 0 && (
+          ) : (
             <div className="p-12 text-center">
               <Users className={`w-16 h-16 mx-auto mb-4 ${darkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-              <p className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>No employees found</p>
-              <p className={`text-sm mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>Try adjusting your search or filter criteria</p>
+              <p className={`text-lg font-medium ${darkMode ? 'text-gray-300' : 'text-gray-500'}`}>
+                {employees.length === 0 ? 'No employees found' : `No employees match "${searchTerm}"`}
+              </p>
+              <p className={`text-sm mt-2 ${darkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                {employees.length === 0 
+                  ? 'Try adding an employee or check your database' 
+                  : `Found ${employees.length} total employees. Try adjusting your search.`}
+              </p>
             </div>
           )}
         </div>
