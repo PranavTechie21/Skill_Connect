@@ -11,8 +11,10 @@ import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
 import { applications } from './schema';
-import { db } from './db';
+import { db, pool } from './db';
 import { storage } from "./storage";
+import connectPgSimple from 'connect-pg-simple';
+import type { Session } from 'express-session';
 import { 
   loginSchema as sharedLoginSchema, 
   registerSchema,
@@ -87,14 +89,52 @@ const storySchema = z.object({
 });
 
 // Helper functions
-const requireAuth = (req: any, res: any, next: any) => {
+const requireAuth = async (req: any, res: any, next: any) => {
+  // Try to reload session if it exists but userId is missing
+  if (req.session && !req.session.userId && req.session.id) {
+    console.log('🔄 requireAuth: Attempting to reload session:', req.session.id);
+    await new Promise<void>((resolve) => {
+      req.session.reload((err: Error | null) => {
+        if (err) {
+          console.error('❌ Error reloading session in requireAuth:', err);
+        } else {
+          console.log('✅ Session reloaded in requireAuth, userId:', req.session?.userId);
+        }
+        resolve();
+      });
+    });
+  }
+
+  console.log('🔍 requireAuth check:', {
+    hasSession: !!req.session,
+    sessionId: req.session?.id,
+    userId: req.session?.userId,
+    hasCookie: !!req.headers.cookie
+  });
+
   if (!req.session?.userId) {
+    console.warn('⚠️ requireAuth: Not authenticated, userId missing from session.');
     return res.status(401).json({ message: "Not authenticated" });
   }
   next();
 };
 
 const requireAdmin = async (req: any, res: any, next: any) => {
+  // Try to reload session if it exists but userId is missing
+  if (req.session && !req.session.userId && req.session.id) {
+    console.log('🔄 Attempting to reload session:', req.session.id);
+    await new Promise<void>((resolve) => {
+      req.session.reload((err: Error | null) => {
+        if (err) {
+          console.error('❌ Error reloading session:', err);
+        } else {
+          console.log('✅ Session reloaded, userId:', req.session?.userId);
+        }
+        resolve();
+      });
+    });
+  }
+
   console.log('🔍 requireAdmin check:', {
     hasSession: !!req.session,
     sessionId: req.session?.id,
@@ -106,7 +146,11 @@ const requireAdmin = async (req: any, res: any, next: any) => {
   
   if (!req.session?.userId) {
     console.warn('⚠️ requireAdmin: Not authenticated, userId missing from session.');
-    console.warn('Session object:', JSON.stringify(req.session, null, 2));
+    console.warn('Session object:', {
+      id: req.session?.id,
+      cookie: req.session?.cookie,
+      userId: req.session?.userId
+    });
     return res.status(401).json({ message: "Not authenticated" });
   }
 
@@ -134,22 +178,71 @@ const sanitizeUser = (user: any) => {
 export async function registerRoutes(app: Express): Promise<Server> {
     // Note: CORS is already configured in index.ts, so we don't need to configure it here again
     
+    // Setup session store using PostgreSQL
+    const PgSessionStore = connectPgSimple(session);
+    const sessionStore = new PgSessionStore({
+      pool: pool,
+      tableName: 'session', // Table name for sessions
+      createTableIfMissing: true, // Automatically create table if it doesn't exist
+    });
+
+    // Add error handler for session store
+    sessionStore.on('error', (error: Error) => {
+      console.error('❌ Session store error:', error);
+    });
+
     // Setup session and file upload handling
     app.use(
       session({
+        store: sessionStore,
         secret: process.env.SESSION_SECRET || 'your-secret-key',
         resave: false,
-        saveUninitialized: false,
+        saveUninitialized: false, // Only save sessions that have been modified
         cookie: { 
           secure: false, // Set to false for development (no HTTPS)
           sameSite: 'lax',
           maxAge: 24 * 60 * 60 * 1000, // 24 hours
           httpOnly: true,
-          path: '/'
+          path: '/',
+          // Don't set domain for localhost - let browser handle it
         },
         name: 'skillconnect.sid'
       }) as any
     );
+
+    // Add middleware to ensure session cookie always has correct path
+    app.use((req, res, next) => {
+      // Override cookie path to always be '/' if session exists
+      if (req.session && req.session.cookie) {
+        req.session.cookie.path = '/';
+      }
+      next();
+    });
+
+    // Add middleware to ensure session is loaded from store
+    app.use((req, res, next) => {
+      // If we have a session ID but no session data, try to reload
+      if (req.session && req.session.id && !req.session.userId) {
+        // Session exists but might not be fully loaded from store
+        console.log('🔄 Middleware: Session exists but userId missing, session ID:', req.session.id);
+      }
+      next();
+    });
+
+    // Add middleware to log session info for debugging
+    app.use((req, res, next) => {
+      if (req.path.startsWith('/api/')) {
+        console.log('📥 Request:', {
+          method: req.method,
+          path: req.path,
+          sessionId: req.session?.id,
+          userId: req.session?.userId,
+          hasCookie: !!req.headers.cookie,
+          cookieHeader: req.headers.cookie?.substring(0, 100)
+        });
+      }
+      next();
+    });
 
     // Setup uploads directory and multer for file uploads
   const uploadDir = path.join(process.cwd(), 'uploads');
@@ -319,14 +412,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
             createdAt: new Date()
           };
           req.session.userId = String(fakeUser.id);
-          return res.status(201).json({ user: sanitizeUser(fakeUser), _devFallback: true });
+          req.session.touch();
+          req.session.save((err) => {
+            if (err) {
+              console.error('❌ Error saving session:', err);
+              return res.status(500).json({ message: "Failed to save session" });
+            }
+            return res.status(201).json({ user: sanitizeUser(fakeUser), _devFallback: true });
+          });
+          return;
         }
         return handleError(res, dbErr, 'Registration failed');
       }
       
       if (!user) return handleError(res, new Error("User creation failed unexpectedly."), "Registration failed");
-      req.session.userId = user.id.toString(); 
-      res.json({ user: sanitizeUser(user) });
+      req.session.userId = user.id.toString();
+      req.session.touch();
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Error saving session:', err);
+          return res.status(500).json({ message: "Failed to save session" });
+        }
+        res.json({ user: sanitizeUser(user) });
+      });
     } catch (error) {
       console.error('Registration error:', error);
       handleError(res, error, "Registration failed");
@@ -337,9 +445,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('🔑 Processing login request:', req.body);
       
-      // Handle hardcoded admin case before schema validation
+      // Check for admin user in database first
+      try {
+        const adminUser = await storage.getUserByEmail(req.body?.email || '');
+        if (adminUser && adminUser.userType === 'admin') {
+          // Verify password
+          const isPasswordValid = await bcrypt.compare(req.body?.password || '', adminUser.password);
+          if (isPasswordValid) {
+            console.log('👑 Admin user login from database');
+            req.session.userId = adminUser.id;
+            req.session.touch(); // Mark session as modified
+            console.log('🔐 Setting session userId:', adminUser.id);
+            req.session.save((err) => {
+              if (err) {
+                console.error('❌ Error saving session:', err);
+                return res.status(500).json({ message: "Failed to save session" });
+              }
+              console.log('✅ Session saved successfully');
+              console.log('📊 Session details:', {
+                id: req.session.id,
+                userId: req.session.userId
+              });
+              return res.json({ user: sanitizeUser(adminUser) });
+            });
+            return;
+          }
+        }
+      } catch (dbError) {
+        console.log('⚠️ Could not check database for admin user, trying fallback:', dbError);
+        // Fall through to hardcoded admin check if database fails
+      }
+
+      // Fallback: Handle hardcoded admin case (for development only)
       if (req.body?.email === 'admin@gmail.com' && req.body?.password === '123456') {
-        console.log('👑 Admin user login');
+        console.log('👑 Admin user login (hardcoded fallback)');
         const adminUser = {
           id: 'admin-001',
           email: 'admin@gmail.com',
@@ -350,30 +489,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: ''
         };
         req.session.userId = adminUser.id;
+        req.session.touch(); // Mark session as modified
         console.log('🔐 Setting session userId:', adminUser.id);
-        console.log('🍪 Session cookie will be set with:', {
-          name: 'skillconnect.sid',
-          httpOnly: true,
-          secure: false,
-          sameSite: 'lax',
-          path: '/'
-        });
         
-        // Save session before sending response
+        // Mark session as modified and save
         req.session.save((err) => {
           if (err) {
             console.error('❌ Error saving session:', err);
             return res.status(500).json({ message: "Failed to save session" });
           }
-          console.log('✅ Session saved successfully, userId:', req.session.userId);
-          console.log('🍪 Session ID:', req.session.id);
-          // Set cookie header explicitly to ensure it's sent
-          res.cookie('skillconnect.sid', req.session.id, {
-            httpOnly: true,
-            secure: false,
-            sameSite: 'lax',
-            maxAge: 24 * 60 * 60 * 1000,
-            path: '/'
+          console.log('✅ Session saved successfully');
+          console.log('📊 Session details:', {
+            id: req.session.id,
+            userId: req.session.userId
           });
           return res.json({ user: sanitizeUser(adminUser) });
         });
@@ -420,6 +548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 userType: 'admin'
               };
               req.session.userId = fallbackAdmin.id;
+              req.session.touch();
               // Save session before sending response
               req.session.save((err) => {
                 if (err) {
@@ -451,13 +580,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('✅ Login successful for user:', { id: user.id, email: user.email });
       req.session.userId = user.id.toString();
-      // Save session before sending response
+      req.session.touch(); // Mark session as modified
+      // Mark session as modified and save
       req.session.save((err) => {
         if (err) {
           console.error('❌ Error saving session:', err);
           return res.status(500).json({ message: "Failed to save session" });
         }
-        console.log('✅ Session saved, userId:', req.session.userId);
+        console.log('✅ Session saved successfully');
+        console.log('📊 Session details:', {
+          id: req.session.id,
+          userId: req.session.userId
+        });
         res.json({ user: sanitizeUser(user) });
       });
       
@@ -484,6 +618,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Production: generic error
       res.status(500).json({ message: "Login failed. Please try again later." });
     }
+  });
+
+  // Debug endpoint to check session
+  app.get("/api/auth/session-debug", async (req, res) => {
+    // Try to reload session from store
+    if (req.session && req.session.id) {
+      await new Promise<void>((resolve) => {
+        req.session.reload((err) => {
+          if (err) {
+            console.error('Error reloading in debug:', err);
+          }
+          resolve();
+        });
+      });
+    }
+
+    // Check session store directly
+    let storeSession = null;
+    if (req.session?.id && sessionStore) {
+      try {
+        storeSession = await new Promise<any>((resolve) => {
+          sessionStore.get(req.session.id, (err: Error | null, session: any) => {
+            if (err) {
+              console.error('Error getting session from store:', err);
+              resolve(null);
+            } else {
+              resolve(session);
+            }
+          });
+        });
+      } catch (error) {
+        console.error('Error accessing session store:', error);
+      }
+    }
+
+    res.json({
+      hasSession: !!req.session,
+      sessionId: req.session?.id,
+      userId: req.session?.userId,
+      cookies: req.headers.cookie,
+      sessionData: {
+        id: req.session?.id,
+        userId: req.session?.userId,
+        cookie: req.session?.cookie
+      },
+      storeSession: storeSession ? {
+        userId: storeSession.userId,
+        cookie: storeSession.cookie
+      } : null
+    });
   });
 
   // Stories routes (Public)
@@ -1077,7 +1261,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes
   app.get("/api/admin/users", requireAdmin, async (req, res) => {
     try {
+      console.log('📊 Fetching all users for admin...');
       const users = await storage.getAllUsers();
+      console.log(`✅ Found ${users.length} users in database`);
+      
       const enrichedUsers = await Promise.all(users.map(async (user) => {
         let profile = null;
         let company = null;
@@ -1095,8 +1282,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           company
         };
       }));
+      
+      console.log(`✅ Returning ${enrichedUsers.length} enriched users`);
       res.json(enrichedUsers);
     } catch (error) {
+      console.error('❌ Error in /api/admin/users:', error);
       handleError(res, error, "Failed to fetch users");
     }
   });

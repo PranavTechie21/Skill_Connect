@@ -25,15 +25,22 @@ export default defineConfig({
         ws: true,
         configure: (proxy, options) => {
           proxy.on('proxyReq', (proxyReq, req, res) => {
-            proxyReq.setHeader('Content-Type', 'application/json');
+            // Forward cookies from the original request
+            if (req.headers.cookie) {
+              proxyReq.setHeader('Cookie', req.headers.cookie);
+            }
+            if (req.headers['content-type']) {
+              proxyReq.setHeader('Content-Type', req.headers['content-type']);
+            }
           });
           proxy.on('proxyRes', (proxyRes, req, res) => {
+            // Forward Set-Cookie headers as-is, don't modify them
+            // The proxy should handle cookies automatically
             // Add CORS headers
             proxyRes.headers['Access-Control-Allow-Credentials'] = 'true';
             proxyRes.headers['Access-Control-Allow-Origin'] = req.headers.origin || 'http://localhost:5173';
             proxyRes.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, PATCH, OPTIONS';
             proxyRes.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization, X-Requested-With';
-            proxyRes.headers['Content-Type'] = 'application/json';
           });
           proxy.on('error', (err, req, res) => {
             console.log('proxy error', err);

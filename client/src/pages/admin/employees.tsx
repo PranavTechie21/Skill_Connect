@@ -69,12 +69,23 @@ export default function AdminEmployees() {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
+      console.log('🔄 Fetching employees...');
       const allUsers = await adminService.getUsers();
+      console.log('✅ Received users:', allUsers);
       // Filter for 'Professional' as they represent the employees/professionals on the platform
-      setEmployees(allUsers.filter(u => u.userType === 'Professional'));
+      const professionals = allUsers.filter(u => u.userType === 'Professional');
+      console.log(`✅ Filtered ${professionals.length} professionals`);
+      setEmployees(professionals);
     } catch (error) {
-      console.error("Failed to fetch employees:", error);
-      toast({ title: "Error", description: "Could not fetch employee data.", variant: "destructive" });
+      console.error("❌ Failed to fetch employees:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Error details:", errorMessage);
+      toast({ 
+        title: "Error", 
+        description: `Could not fetch employee data: ${errorMessage}`, 
+        variant: "destructive" 
+      });
+      setEmployees([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
