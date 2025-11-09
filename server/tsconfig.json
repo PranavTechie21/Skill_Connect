@@ -9,8 +9,13 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-  "rootDir": ".."
+    "rootDir": "..",
+    "baseUrl": "..",
+    "paths": {
+      "drizzle-orm/*": ["node_modules/drizzle-orm/*"],
+      "drizzle-zod": ["node_modules/drizzle-zod"]
+    }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "../shared/**/*"],
   "exclude": ["node_modules", "dist"]
 }

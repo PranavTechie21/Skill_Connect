@@ -95,19 +95,31 @@ const requireAuth = (req: any, res: any, next: any) => {
 };
 
 const requireAdmin = async (req: any, res: any, next: any) => {
+  console.log('🔍 requireAdmin check:', {
+    hasSession: !!req.session,
+    sessionId: req.session?.id,
+    userId: req.session?.userId,
+    cookies: req.headers.cookie,
+    origin: req.headers.origin,
+    url: req.url
+  });
+  
   if (!req.session?.userId) {
     console.warn('⚠️ requireAdmin: Not authenticated, userId missing from session.');
+    console.warn('Session object:', JSON.stringify(req.session, null, 2));
     return res.status(401).json({ message: "Not authenticated" });
   }
 
   // Handle the hardcoded admin user
   if (req.session.userId === 'admin-001') {
+    console.log('✅ Admin user authenticated (hardcoded)');
     return next();
   }
 
   // For regular users, check their userType in the database
   const user = await storage.getUser(req.session.userId);
   if (user?.userType === 'admin') {
+    console.log('✅ Admin user authenticated (database)');
     return next();
   }
 
@@ -120,19 +132,8 @@ const sanitizeUser = (user: any) => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
-    // Configure CORS for all routes
-    app.use(cors({
-      origin: [
-        'http://localhost:5173', 
-        'http://127.0.0.1:5173', 
-        'http://localhost:5002',
-        'http://127.0.0.1:5002'
-      ],
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    }));
-
+    // Note: CORS is already configured in index.ts, so we don't need to configure it here again
+    
     // Setup session and file upload handling
     app.use(
       session({
@@ -349,7 +350,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           password: ''
         };
         req.session.userId = adminUser.id;
-        return res.json({ user: sanitizeUser(adminUser) });
+        console.log('🔐 Setting session userId:', adminUser.id);
+        console.log('🍪 Session cookie will be set with:', {
+          name: 'skillconnect.sid',
+          httpOnly: true,
+          secure: false,
+          sameSite: 'lax',
+          path: '/'
+        });
+        
+        // Save session before sending response
+        req.session.save((err) => {
+          if (err) {
+            console.error('❌ Error saving session:', err);
+            return res.status(500).json({ message: "Failed to save session" });
+          }
+          console.log('✅ Session saved successfully, userId:', req.session.userId);
+          console.log('🍪 Session ID:', req.session.id);
+          // Set cookie header explicitly to ensure it's sent
+          res.cookie('skillconnect.sid', req.session.id, {
+            httpOnly: true,
+            secure: false,
+            sameSite: 'lax',
+            maxAge: 24 * 60 * 60 * 1000,
+            path: '/'
+          });
+          return res.json({ user: sanitizeUser(adminUser) });
+        });
+        return;
       }
 
       // For non-admin users, validate schema
@@ -392,7 +420,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 userType: 'admin'
               };
               req.session.userId = fallbackAdmin.id;
-              return res.json({ user: sanitizeUser(fallbackAdmin), _devFallback: true });
+              // Save session before sending response
+              req.session.save((err) => {
+                if (err) {
+                  console.error('❌ Error saving session:', err);
+                  return res.status(500).json({ message: "Failed to save session" });
+                }
+                return res.json({ user: sanitizeUser(fallbackAdmin), _devFallback: true });
+              });
+              return;
             }
           }
         }
@@ -415,7 +451,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log('✅ Login successful for user:', { id: user.id, email: user.email });
       req.session.userId = user.id.toString();
-      res.json({ user: sanitizeUser(user) });
+      // Save session before sending response
+      req.session.save((err) => {
+        if (err) {
+          console.error('❌ Error saving session:', err);
+          return res.status(500).json({ message: "Failed to save session" });
+        }
+        console.log('✅ Session saved, userId:', req.session.userId);
+        res.json({ user: sanitizeUser(user) });
+      });
       
     } catch (error) {
       console.error('❌ Error in login route:', error);
