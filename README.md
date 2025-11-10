@@ -357,7 +357,15 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 🌐 Live Demo
+## � Video Demo
+
+Check out the Skills Connect Job Board in action!
+
+https://github.com/PranavTechie21/CEP_Project/assets/videos/SkillConnect.mp4
+
+---
+
+## �🌐 Live Demo
 
 **Coming Soon!** 
 
