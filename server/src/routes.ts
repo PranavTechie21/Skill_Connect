@@ -1609,13 +1609,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper to normalize application data (convert snake_case to camelCase)
+  const normalizeApplication = (app: any) => {
+    return {
+      id: app.id,
+      jobId: app.jobId || app.job_id,
+      applicantId: app.applicantId || app.applicant_id || app.userId || app.user_id,
+      status: app.status,
+      coverLetter: app.coverLetter || app.cover_letter,
+      resume: app.resume,
+      notes: app.notes,
+      appliedAt: app.appliedAt || app.applied_at,
+      submittedAt: app.submittedAt || app.submitted_at || app.appliedAt || app.applied_at,
+      updatedAt: app.updatedAt || app.updated_at,
+      attachments: app.attachments || [],
+    };
+  };
+
   // Admin: Get all applications
   app.get("/api/admin/applications", requireAdmin, async (req, res) => {
     try {
       const applications = await storage.getApplicationsByJob("all");
-      res.json(applications);
+      console.log('📋 Admin: Fetched applications from DB:', applications.length);
+      
+      // Enrich applications with user and job data
+      const enrichedApplications = await Promise.all(
+        applications.map(async (app: any) => {
+          // Normalize application data first
+          const normalizedApp = normalizeApplication(app);
+          
+          // Handle both snake_case (from DB) and camelCase (from schema)
+          const jobId = normalizedApp.jobId;
+          const userId = normalizedApp.applicantId;
+          
+          if (!jobId || !userId) {
+            console.warn('⚠️ Application missing IDs:', { app, jobId, userId });
+          }
+          
+          const [job, applicant] = await Promise.all([
+            jobId ? storage.getJob(String(jobId)).catch((err) => {
+              console.error('Error fetching job:', jobId, err);
+              return null;
+            }) : null,
+            userId ? storage.getUser(String(userId)).catch((err) => {
+              console.error('Error fetching user:', userId, err);
+              return null;
+            }) : null,
+          ]);
+          
+          // Handle both snake_case and camelCase for companyId
+          const companyId = job?.companyId || (job as any)?.company_id;
+          const company = companyId ? await storage.getCompany(String(companyId)).catch((err) => {
+            console.error('Error fetching company:', companyId, err);
+            return null;
+          }) : null;
+          
+          // Get user profile for additional info
+          let profile = null;
+          if (applicant) {
+            const userType = applicant.userType || (applicant as any).user_type || '';
+            if (userType === 'Professional' || userType === 'job_seeker') {
+              profile = await storage.getProfessionalProfileByUserId(String(applicant.id)).catch(() => null);
+            }
+          }
+          
+          return {
+            ...normalizedApp,
+            job: job ? job : null,
+            applicant: applicant ? sanitizeUser(applicant) : null,
+            company: company ? company : null,
+            profile: profile,
+          };
+        })
+      );
+      
+      console.log('✅ Admin: Enriched applications:', enrichedApplications.length);
+      res.json(enrichedApplications);
     } catch (error) {
+      console.error('❌ Admin: Error fetching applications:', error);
       handleError(res, error, "Failed to fetch applications");
+    }
+  });
+
+  // Admin: Update application status
+  app.put("/api/admin/applications/:id", requireAdmin, async (req, res) => {
+    try {
+      const { status } = req.body;
+      if (!status) {
+        return res.status(400).json({ message: "Status is required" });
+      }
+      
+      const updatedApplication = await storage.updateApplication(req.params.id, { status });
+      res.json(updatedApplication);
+    } catch (error) {
+      handleError(res, error, "Failed to update application");
     }
   });
 
