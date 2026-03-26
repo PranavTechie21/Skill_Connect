@@ -111,3 +111,28 @@ html {
 body {
   top: 0 !important;
 }
+
+/* Employee appearance preferences */
+:root[data-font-size="small"] {
+  font-size: 14px;
+}
+
+:root[data-font-size="medium"] {
+  font-size: 16px;
+}
+
+:root[data-font-size="large"] {
+  font-size: 18px;
+}
+
+:root[data-ui-density="compact"] :where(button, input, select, textarea) {
+  min-height: 2.15rem;
+}
+
+:root[data-ui-density="comfortable"] :where(button, input, select, textarea) {
+  min-height: 2.5rem;
+}
+
+:root[data-ui-density="spacious"] :where(button, input, select, textarea) {
+  min-height: 2.85rem;
+}

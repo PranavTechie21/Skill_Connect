@@ -7,10 +7,22 @@ import { ThemeProvider } from "./components/theme-provider";
 import Navbar from "./components/navbar";
 import EmployeeLayout from "./components/layouts/EmployeeLayout";
 import EmployerLayout from "./components/layouts/employer-layout";
+import { SkillConnectAssistant } from "./components/skillconnect-assistant";
 
 
 // Public Pages
 import Home from "./pages/home";
+import { useEffect } from "react";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [pathname]);
+
+  return null;
+}
 import ProfileRedirect from "./pages/profile-redirect";
 import NotFound from "./pages/not-found";
 import OurStories from "./pages/our-stories";
@@ -222,7 +234,7 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      {/* <SkillConnectAssistant /> */}
+      <SkillConnectAssistant />
     </div>
   );
 }
@@ -286,6 +298,7 @@ export default function App() {
     <ErrorBoundary>
       <React.Suspense fallback={<AppLoading />}>
           <Router>
+            <ScrollToTop />
             <AuthProvider>
               <SavedJobsProvider>
                 <ThemeProvider defaultTheme="system" storageKey="skillconnect-theme">

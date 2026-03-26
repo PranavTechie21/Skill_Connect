@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 const AdminSettings: React.FC = () => {
+  type SectionKey = 'general' | 'notifications' | 'security' | 'backup' | 'api';
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
@@ -16,6 +17,7 @@ const AdminSettings: React.FC = () => {
   const [autoBackup, setAutoBackup] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [activeSection, setActiveSection] = useState<SectionKey>('general');
   const navigate = useNavigate();
 
   const handleSave = () => {
@@ -70,7 +72,71 @@ const AdminSettings: React.FC = () => {
       </div>
 
       <div className="max-w-6xl mx-auto space-y-6">
+        {/* Section Navigator */}
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border-2 border-gray-100 dark:border-gray-700 p-5 sticky top-4 z-20">
+          <div className="flex items-center gap-2 mb-3">
+            <FileText className="w-5 h-5 text-purple-600" />
+            <h3 className="text-lg font-black text-gray-900 dark:text-white">Settings Sections</h3>
+          </div>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            Choose a section to edit quickly without scrolling through everything.
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <button
+              onClick={() => setActiveSection('general')}
+              className={`px-3 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                activeSection === 'general'
+                  ? 'bg-purple-600 text-white border-purple-600 shadow-lg'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-purple-300'
+              }`}
+            >
+              General
+            </button>
+            <button
+              onClick={() => setActiveSection('notifications')}
+              className={`px-3 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                activeSection === 'notifications'
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-blue-300'
+              }`}
+            >
+              Notifications
+            </button>
+            <button
+              onClick={() => setActiveSection('security')}
+              className={`px-3 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                activeSection === 'security'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-lg'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-rose-300'
+              }`}
+            >
+              Security
+            </button>
+            <button
+              onClick={() => setActiveSection('backup')}
+              className={`px-3 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                activeSection === 'backup'
+                  ? 'bg-emerald-600 text-white border-emerald-600 shadow-lg'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-emerald-300'
+              }`}
+            >
+              Backup
+            </button>
+            <button
+              onClick={() => setActiveSection('api')}
+              className={`px-3 py-2.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                activeSection === 'api'
+                  ? 'bg-orange-600 text-white border-orange-600 shadow-lg'
+                  : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-gray-600 hover:border-orange-300'
+              }`}
+            >
+              API
+            </button>
+          </div>
+        </div>
+
         {/* General Settings */}
+        {activeSection === 'general' && (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border-2 border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-gray-700 dark:to-gray-700 p-6 border-b-2 border-gray-100 dark:border-gray-600">
             <div className="flex items-center gap-3">
@@ -146,8 +212,10 @@ const AdminSettings: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Notifications */}
+        {activeSection === 'notifications' && (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border-2 border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-700 p-6 border-b-2 border-gray-100 dark:border-gray-600">
             <div className="flex items-center gap-3">
@@ -238,8 +306,10 @@ const AdminSettings: React.FC = () => {
             </button>
           </div>
         </div>
+        )}
 
         {/* Security */}
+        {activeSection === 'security' && (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border-2 border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-red-50 to-rose-50 dark:from-gray-700 dark:to-gray-700 p-6 border-b-2 border-gray-100 dark:border-gray-600">
             <div className="flex items-center gap-3">
@@ -317,8 +387,10 @@ const AdminSettings: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Database & Backup */}
+        {activeSection === 'backup' && (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border-2 border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-700 dark:to-gray-700 p-6 border-b-2 border-gray-100 dark:border-gray-600">
             <div className="flex items-center gap-3">
@@ -374,8 +446,10 @@ const AdminSettings: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* API & Integration */}
+        {activeSection === 'api' && (
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border-2 border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-gray-700 dark:to-gray-700 p-6 border-b-2 border-gray-100 dark:border-gray-600">
             <div className="flex items-center gap-3">
@@ -425,6 +499,7 @@ const AdminSettings: React.FC = () => {
             </div>
           </div>
         </div>
+        )}
 
         {/* Save Button */}
         <div className="flex items-center justify-between p-6 bg-white dark:bg-gray-800 rounded-3xl shadow-xl border-2 border-gray-100 dark:border-gray-700">

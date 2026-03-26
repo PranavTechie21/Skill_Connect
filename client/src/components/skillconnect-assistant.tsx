@@ -9,6 +9,7 @@ interface ChatMessage {
   id: number;
   from: "user" | "bot";
   text: string;
+  pending?: boolean;
 }
 
 const SUGGESTIONS = [
@@ -21,6 +22,7 @@ const SUGGESTIONS = [
 export function SkillConnectAssistant() {
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 1,
@@ -30,6 +32,11 @@ export function SkillConnectAssistant() {
   ]);
   const listRef = useRef<HTMLDivElement | null>(null);
   const nextId = useRef(2);
+  const messagesRef = useRef<ChatMessage[]>(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => {
     if (!open) return;
@@ -40,6 +47,7 @@ export function SkillConnectAssistant() {
   }, [open, messages.length]);
 
   const handleSend = async (text?: string) => {
+    if (isSending) return;
     const content = (text ?? input).trim();
     if (!content) return;
 
@@ -47,14 +55,20 @@ export function SkillConnectAssistant() {
     const idBot = nextId.current++;
 
     const userMessage: ChatMessage = { id: idUser, from: "user", text: content };
-    setMessages((prev) => [...prev, userMessage]);
+    const pendingBot: ChatMessage = { id: idBot, from: "bot", text: "Thinking...", pending: true };
+    setMessages((prev) => [...prev, userMessage, pendingBot]);
     setInput("");
+    setIsSending(true);
 
     try {
-      const history = [...messages, userMessage];
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 12000);
+      // Keep payload small to reduce latency.
+      const history = [...messagesRef.current, userMessage].slice(-12);
       const res = await fetch("/api/assistant/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           messages: history.map((m) => ({
             role: m.from === "user" ? "user" : "assistant",
@@ -62,6 +76,7 @@ export function SkillConnectAssistant() {
           })),
         }),
       });
+      clearTimeout(timeout);
 
       if (!res.ok) {
         throw new Error(`API error: ${res.status}`);
@@ -71,25 +86,25 @@ export function SkillConnectAssistant() {
         data.reply ||
         "I had trouble generating a detailed answer, but your question was received.";
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: idBot,
-          from: "bot",
-          text: replyText,
-        },
-      ]);
+      setMessages((prev) =>
+        prev.map((m) => (m.id === idBot ? { ...m, text: replyText, pending: false } : m)),
+      );
     } catch (error) {
       console.error("Assistant error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: idBot,
-          from: "bot",
-          text:
-            "I couldn't reach the assistant service right now. Please check your connection or try again later.",
-        },
-      ]);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === idBot
+            ? {
+                ...m,
+                pending: false,
+                text:
+                  "I couldn't reach the assistant service right now. Please check your connection or try again later.",
+              }
+            : m,
+        ),
+      );
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -101,21 +116,11 @@ export function SkillConnectAssistant() {
         onClick={() => setOpen((o) => !o)}
         className="relative flex h-16 w-16 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-[1.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 shrink-0"
         style={{
-          background:
-            "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))",
-          boxShadow:
-            "0 4px 10px -2px rgba(79,70,229,.3), 0 0 0 1px rgba(129,140,248,.2)",
+          background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
         }}
         aria-label={open ? "Close chat" : "Open chat"}
       >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-full opacity-60"
-          style={{
-            background:
-              "radial-gradient(circle at top, rgba(255,255,255,.35), transparent 60%)",
-          }}
-        />
         <AnimatePresence initial={false} mode="wait">
           {open ? (
             <motion.span
@@ -185,7 +190,13 @@ export function SkillConnectAssistant() {
                         : "bg-secondary text-secondary-foreground border-border/50"
                     }`}
                   >
-                    {m.from === "bot" ? (
+                    {m.from === "bot" && m.pending ? (
+                      <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.2s]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.1s]" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-current animate-bounce" />
+                      </span>
+                    ) : m.from === "bot" ? (
                       <ReactMarkdown
                         components={{
                           p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
@@ -212,6 +223,7 @@ export function SkillConnectAssistant() {
                   key={s}
                   type="button"
                   onClick={() => handleSend(s)}
+                  disabled={isSending}
                   className="rounded-full px-3 py-1 text-[12px] font-medium bg-secondary/70 text-secondary-foreground border border-border/50 hover:bg-secondary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {s}
@@ -230,11 +242,12 @@ export function SkillConnectAssistant() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask a question or describe the issue..."
+                disabled={isSending}
                 className="flex-1 h-10 rounded-full bg-background/60 border-border/50 text-[0.9rem] placeholder:text-muted-foreground focus-visible:ring-primary/30"
               />
               <Button
                 type="submit"
-                disabled={!input.trim()}
+                disabled={!input.trim() || isSending}
                 size="icon"
                 className="h-10 w-10 rounded-full shadow-sm bg-primary hover:bg-primary/90 disabled:opacity-40"
               >

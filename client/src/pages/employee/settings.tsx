@@ -11,15 +11,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 
 const SettingsPage = () => {
-  const { theme } = useTheme();
+  const { theme, setTheme } = useTheme();
   const { user, logout } = useAuth();
-  const darkMode = theme === 'dark';
+  const darkMode = typeof window !== 'undefined' && (
+    theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+  );
   const { t } = useLanguage();
   const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState('account');
   const [isEditing, setIsEditing] = useState(false);
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const settingsStorageKey = user?.id ? `employee-settings:${user.id}` : 'employee-settings:guest';
+  const resolveAppearanceTheme = () => (theme === 'system' ? 'auto' : theme);
 
   // Real user data from auth context
   const [settings, setSettings] = useState({
@@ -51,7 +56,7 @@ const SettingsPage = () => {
       }
     },
     appearance: {
-      theme: 'dark',
+      theme: resolveAppearanceTheme(),
       fontSize: 'medium',
       density: 'comfortable'
     },
@@ -79,6 +84,24 @@ const SettingsPage = () => {
     }
   }, [user]);
 
+  // Load persisted settings for this user/session.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(settingsStorageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setSettings((prev) => ({ ...prev, ...parsed }));
+        if (parsed?.appearance) {
+          applyAppearancePreferences(parsed.appearance);
+        }
+      }
+      const savedAt = localStorage.getItem(`${settingsStorageKey}:savedAt`);
+      if (savedAt) setLastSavedAt(savedAt);
+    } catch (error) {
+      console.warn('Failed to load saved employee settings', error);
+    }
+  }, [settingsStorageKey]);
+
   const sections: { id: string; label: string; icon: any; color: 'blue' | 'green' | 'purple' | 'pink' | 'orange' }[] = [
     { id: 'account', label: 'Account', icon: User, color: 'blue' },
     { id: 'security', label: 'Security', icon: Shield, color: 'green' },
@@ -88,8 +111,26 @@ const SettingsPage = () => {
   ];
 
   const handleSave = () => {
+    // Apply app theme from appearance settings.
+    const selectedTheme = settings.appearance.theme;
+    if (selectedTheme === 'auto') {
+      setTheme('system');
+    } else {
+      setTheme(selectedTheme as 'light' | 'dark');
+    }
+    applyAppearancePreferences(settings.appearance);
+
+    // Persist all settings.
+    try {
+      localStorage.setItem(settingsStorageKey, JSON.stringify(settings));
+    } catch (error) {
+      console.warn('Failed to persist employee settings', error);
+    }
+
+    const savedAt = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    localStorage.setItem(`${settingsStorageKey}:savedAt`, savedAt);
     setIsEditing(false);
-    // In real app, save to backend here
+    setLastSavedAt(savedAt);
   };
 
   const handleCancel = () => {
@@ -116,6 +157,61 @@ const SettingsPage = () => {
     };
     return colors[color];
   };
+
+  const updateAccount = (field: keyof typeof settings.account, value: string) => {
+    setSettings(prev => ({ ...prev, account: { ...prev.account, [field]: value } }));
+  };
+
+  const updateAppearance = (field: keyof typeof settings.appearance, value: string) => {
+    setSettings(prev => ({ ...prev, appearance: { ...prev.appearance, [field]: value } }));
+  };
+
+  const applyAppearancePreferences = (appearance: { theme: string; fontSize: string; density: string }) => {
+    const root = document.documentElement;
+    root.setAttribute('data-font-size', appearance.fontSize || 'medium');
+    root.setAttribute('data-ui-density', appearance.density || 'comfortable');
+  };
+
+  const toggleSecurity = (field: keyof typeof settings.security) => {
+    setSettings(prev => ({ ...prev, security: { ...prev.security, [field]: !prev.security[field] } }));
+  };
+
+  const toggleNotification = (channel: 'email' | 'push', key: string) => {
+    setSettings(prev => ({
+      ...prev,
+      notifications: {
+        ...prev.notifications,
+        [channel]: {
+          ...prev.notifications[channel],
+          [key]: !prev.notifications[channel][key as keyof typeof prev.notifications[typeof channel]],
+        },
+      },
+    }));
+  };
+
+  const togglePreference = (key: keyof typeof settings.preferences) => {
+    setSettings(prev => ({
+      ...prev,
+      preferences: { ...prev.preferences, [key]: !prev.preferences[key] },
+    }));
+  };
+
+  const enabledPreferences = Object.values(settings.preferences).filter(Boolean).length;
+  const enabledEmailNotifs = Object.values(settings.notifications.email).filter(Boolean).length;
+  const enabledPushNotifs = Object.values(settings.notifications.push).filter(Boolean).length;
+  const profileStrength = Math.min(100, 58 + enabledPreferences * 8 + enabledEmailNotifs * 2 + (settings.security.twoFactorAuth ? 12 : 0));
+
+  // Keep selected appearance theme synced when global theme changes externally.
+  useEffect(() => {
+    const appearanceTheme = theme === 'system' ? 'auto' : theme;
+    setSettings((prev) => ({
+      ...prev,
+      appearance: {
+        ...prev.appearance,
+        theme: appearanceTheme,
+      },
+    }));
+  }, [theme]);
 
   return (
     <div className={`min-h-screen w-screen fixed inset-0 transition-colors duration-300 ${
@@ -188,6 +284,33 @@ const SettingsPage = () => {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+
+        {/* Engagement Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className={`rounded-2xl p-4 border ${
+            darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+          }`}>
+            <p className={`text-xs uppercase tracking-wide ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Profile Strength</p>
+            <p className={`text-2xl font-black mt-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{profileStrength}%</p>
+            <div className={`w-full h-2 rounded-full mt-3 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+              <div className="h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500" style={{ width: `${profileStrength}%` }} />
+            </div>
+          </div>
+          <div className={`rounded-2xl p-4 border ${
+            darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+          }`}>
+            <p className={`text-xs uppercase tracking-wide ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Notifications Enabled</p>
+            <p className={`text-2xl font-black mt-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{enabledEmailNotifs + enabledPushNotifs}</p>
+            <p className={darkMode ? 'text-gray-400 text-sm mt-1' : 'text-gray-600 text-sm mt-1'}>Email: {enabledEmailNotifs} | Push: {enabledPushNotifs}</p>
+          </div>
+          <div className={`rounded-2xl p-4 border ${
+            darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+          }`}>
+            <p className={`text-xs uppercase tracking-wide ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last Saved</p>
+            <p className={`text-lg font-bold mt-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>{lastSavedAt ?? 'Not saved yet'}</p>
+            <p className={darkMode ? 'text-gray-400 text-sm mt-1' : 'text-gray-600 text-sm mt-1'}>Tip: Enable 2FA for better account trust.</p>
           </div>
         </div>
 
@@ -283,6 +406,7 @@ const SettingsPage = () => {
                       <input
                         type="text"
                         value={settings.account.firstName}
+                        onChange={(e) => updateAccount('firstName', e.target.value)}
                         className={`w-full px-4 py-3 rounded-xl border-2 transition-all ${
                           darkMode
                             ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500'
@@ -306,6 +430,7 @@ const SettingsPage = () => {
                       <input
                         type="text"
                         value={settings.account.lastName}
+                        onChange={(e) => updateAccount('lastName', e.target.value)}
                         className={`w-full px-4 py-3 rounded-xl border-2 transition-all ${
                           darkMode
                             ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500'
@@ -333,6 +458,7 @@ const SettingsPage = () => {
                         <input
                           type="email"
                           value={settings.account.email}
+                          onChange={(e) => updateAccount('email', e.target.value)}
                           className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
                             darkMode
                               ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500'
@@ -361,6 +487,7 @@ const SettingsPage = () => {
                         <input
                           type="tel"
                           value={settings.account.phone}
+                          onChange={(e) => updateAccount('phone', e.target.value)}
                           className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
                             darkMode
                               ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500'
@@ -384,6 +511,7 @@ const SettingsPage = () => {
                     {isEditing ? (
                       <select
                         value={settings.account.language}
+                        onChange={(e) => updateAccount('language', e.target.value)}
                         className={`w-full px-4 py-3 rounded-xl border-2 transition-all ${
                           darkMode
                             ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500'
@@ -411,6 +539,7 @@ const SettingsPage = () => {
                     {isEditing ? (
                       <select
                         value={settings.account.timezone}
+                        onChange={(e) => updateAccount('timezone', e.target.value)}
                         className={`w-full px-4 py-3 rounded-xl border-2 transition-all ${
                           darkMode
                             ? 'bg-gray-700 border-gray-600 text-white focus:border-blue-500'
@@ -570,7 +699,9 @@ const SettingsPage = () => {
                       }`}>
                         Two-Factor Authentication
                       </h4>
-                      <div className={`w-12 h-6 rounded-full transition-all ${
+                      <button
+                        onClick={() => toggleSecurity('twoFactorAuth')}
+                        className={`w-12 h-6 rounded-full transition-all ${
                         settings.security.twoFactorAuth
                           ? darkMode ? 'bg-green-500' : 'bg-green-600'
                           : darkMode ? 'bg-gray-600' : 'bg-gray-300'
@@ -578,7 +709,7 @@ const SettingsPage = () => {
                         <div className={`w-4 h-4 rounded-full bg-white transform transition-transform ${
                           settings.security.twoFactorAuth ? 'translate-x-7' : 'translate-x-1'
                         }`} />
-                      </div>
+                      </button>
                     </div>
                     <p className={`text-sm ${
                       darkMode ? 'text-gray-400' : 'text-gray-600'
@@ -596,7 +727,9 @@ const SettingsPage = () => {
                       }`}>
                         Login Alerts
                       </h4>
-                      <div className={`w-12 h-6 rounded-full transition-all ${
+                      <button
+                        onClick={() => toggleSecurity('loginAlerts')}
+                        className={`w-12 h-6 rounded-full transition-all ${
                         settings.security.loginAlerts
                           ? darkMode ? 'bg-green-500' : 'bg-green-600'
                           : darkMode ? 'bg-gray-600' : 'bg-gray-300'
@@ -604,7 +737,7 @@ const SettingsPage = () => {
                         <div className={`w-4 h-4 rounded-full bg-white transform transition-transform ${
                           settings.security.loginAlerts ? 'translate-x-7' : 'translate-x-1'
                         }`} />
-                      </div>
+                      </button>
                     </div>
                     <p className={`text-sm ${
                       darkMode ? 'text-gray-400' : 'text-gray-600'
@@ -695,7 +828,9 @@ const SettingsPage = () => {
                           <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
                             {key.split(/(?=[A-Z])/).join(' ')}
                           </span>
-                          <div className={`w-12 h-6 rounded-full transition-all ${
+                          <button
+                            onClick={() => toggleNotification('email', key)}
+                            className={`w-12 h-6 rounded-full transition-all ${
                             value
                               ? darkMode ? 'bg-green-500' : 'bg-green-600'
                               : darkMode ? 'bg-gray-600' : 'bg-gray-300'
@@ -703,7 +838,7 @@ const SettingsPage = () => {
                             <div className={`w-4 h-4 rounded-full bg-white transform transition-transform ${
                               value ? 'translate-x-7' : 'translate-x-1'
                             }`} />
-                          </div>
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -726,7 +861,9 @@ const SettingsPage = () => {
                           <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>
                             {key.split(/(?=[A-Z])/).join(' ')}
                           </span>
-                          <div className={`w-12 h-6 rounded-full transition-all ${
+                          <button
+                            onClick={() => toggleNotification('push', key)}
+                            className={`w-12 h-6 rounded-full transition-all ${
                             value
                               ? darkMode ? 'bg-green-500' : 'bg-green-600'
                               : darkMode ? 'bg-gray-600' : 'bg-gray-300'
@@ -734,7 +871,7 @@ const SettingsPage = () => {
                             <div className={`w-4 h-4 rounded-full bg-white transform transition-transform ${
                               value ? 'translate-x-7' : 'translate-x-1'
                             }`} />
-                          </div>
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -782,6 +919,7 @@ const SettingsPage = () => {
                       {['light', 'dark', 'auto'].map(theme => (
                         <button
                           key={theme}
+                          onClick={() => updateAppearance('theme', theme)}
                           className={`w-full p-3 rounded-xl text-left transition-all ${
                             settings.appearance.theme === theme
                               ? darkMode
@@ -811,6 +949,7 @@ const SettingsPage = () => {
                       {['small', 'medium', 'large'].map(size => (
                         <button
                           key={size}
+                          onClick={() => updateAppearance('fontSize', size)}
                           className={`w-full p-3 rounded-xl text-left transition-all ${
                             settings.appearance.fontSize === size
                               ? darkMode
@@ -840,6 +979,7 @@ const SettingsPage = () => {
                       {['compact', 'comfortable', 'spacious'].map(density => (
                         <button
                           key={density}
+                          onClick={() => updateAppearance('density', density)}
                           className={`w-full p-3 rounded-xl text-left transition-all ${
                             settings.appearance.density === density
                               ? darkMode
@@ -895,7 +1035,9 @@ const SettingsPage = () => {
                         }`}>
                           {key.split(/(?=[A-Z])/).join(' ')}
                         </h4>
-                        <div className={`w-12 h-6 rounded-full transition-all ${
+                        <button
+                          onClick={() => togglePreference(key as keyof typeof settings.preferences)}
+                          className={`w-12 h-6 rounded-full transition-all ${
                           value
                             ? darkMode ? 'bg-green-500' : 'bg-green-600'
                             : darkMode ? 'bg-gray-600' : 'bg-gray-300'
@@ -903,7 +1045,7 @@ const SettingsPage = () => {
                           <div className={`w-4 h-4 rounded-full bg-white transform transition-transform ${
                             value ? 'translate-x-7' : 'translate-x-1'
                           }`} />
-                        </div>
+                        </button>
                       </div>
                       <p className={`text-sm ${
                         darkMode ? 'text-gray-400' : 'text-gray-600'
