@@ -26,8 +26,8 @@ interface User {
   created_at?: string;
   location?: string;
   profile?: {
-    headline?: string;
-    title?: string;
+    headline?: string | null;
+    title?: string | null;
   };
 }
 
@@ -392,7 +392,272 @@ const ViewUserModal = ({
   );
 };
 
-// Edit User Modal
+// Add User Modal
+const AddUserModal = ({ 
+  onSave, 
+  onCancel, 
+  darkMode 
+}: { 
+  onSave: (data: any) => Promise<void>; 
+  onCancel: () => void; 
+  darkMode: boolean; 
+}) => {
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    title: '',
+    location: '',
+    telephoneNumber: '',
+    userType: 'Professional' as 'Professional' | 'Employer' | 'admin',
+    skills: [] as string[]
+  });
+  const [skillInput, setSkillInput] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onSave(formData);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addSkill = () => {
+    if (skillInput.trim() && !formData.skills.includes(skillInput.trim())) {
+      setFormData({ ...formData, skills: [...formData.skills, skillInput.trim()] });
+      setSkillInput('');
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={onCancel}>
+      <div 
+        className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white'} rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border-2`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-8">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>Add New User</h2>
+            <button
+              onClick={onCancel}
+              className={`p-2 rounded-lg transition-all ${
+                darkMode ? 'hover:bg-gray-700 text-gray-400' : 'hover:bg-gray-100 text-gray-600'
+              }`}
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                  required
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                  required
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Password <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Designation (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                  placeholder="e.g., Software Engineer"
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Location (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                  placeholder="e.g., Pune, India"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  User Type <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.userType}
+                  onChange={(e) => setFormData({ ...formData, userType: e.target.value as any })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                >
+                  <option value="Professional">Professional</option>
+                  <option value="Employer">Employer</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <div>
+                <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                  Phone Number (Optional)
+                </label>
+                <input
+                  type="tel"
+                  value={formData.telephoneNumber}
+                  onChange={(e) => setFormData({ ...formData, telephoneNumber: e.target.value })}
+                  className={`w-full px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                  placeholder="e.g., +91 9876543210"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                Skills (Optional)
+              </label>
+              <div className="flex gap-2 mb-2">
+                <input
+                  type="text"
+                  value={skillInput}
+                  onChange={(e) => setSkillInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                  className={`flex-1 px-4 py-3 rounded-xl border-2 ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                  } focus:border-blue-500 outline-none`}
+                  placeholder="Type a skill and press Enter"
+                />
+                <button
+                  type="button"
+                  onClick={addSkill}
+                  className="px-6 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 transition-all"
+                >
+                  Add
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {formData.skills.map((skill, index) => (
+                  <span
+                    key={index}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-2 ${
+                      darkMode ? 'bg-blue-500/10 text-blue-400' : 'bg-blue-50 text-blue-600 border border-blue-100'
+                    }`}
+                  >
+                    {skill}
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, skills: formData.skills.filter((_, i) => i !== index) })}
+                    >
+                      <X className="w-3 h-3 hover:scale-125 transition-transform" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-6">
+              <button
+                type="button"
+                onClick={onCancel}
+                className={`flex-1 px-6 py-4 rounded-xl font-bold transition-all ${
+                  darkMode ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="flex-1 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:shadow-lg hover:shadow-blue-500/25 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {saving ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin" />
+                    Creating User...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-5 h-5" />
+                    Create User
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Confirmation Modal
 const EditUserModal = ({ 
   user, 
   onSave, 
@@ -631,9 +896,10 @@ const UserManagement = () => {
   
   const [users, setUsers] = useState<DisplayUser[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedUser, setSelectedUser] = useState<DisplayUser | null>(null);
+   const [selectedUser, setSelectedUser] = useState<DisplayUser | null>(null);
   const [userToEdit, setUserToEdit] = useState<DisplayUser | null>(null);
   const [userToDelete, setUserToDelete] = useState<DisplayUser | null>(null);
+  const [showAddUser, setShowAddUser] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'Professional' | 'Employer'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'pending' | 'suspended'>('all');
@@ -697,6 +963,25 @@ const UserManagement = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+   const handleAddUser = async (data: any): Promise<void> => {
+    try {
+      await adminService.createUser(data);
+      toast({
+        title: 'Success',
+        description: 'User created successfully'
+      });
+      setShowAddUser(false);
+      loadUsers();
+    } catch (error) {
+      console.error('Failed to create user:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to create user. Please check if email already exists.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -794,7 +1079,7 @@ const UserManagement = () => {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
+       {/* Delete Confirmation Modal */}
       {userToDelete && (
         <ConfirmationModal 
           user={userToDelete} 
@@ -804,26 +1089,45 @@ const UserManagement = () => {
         />
       )}
 
+      {/* Add User Modal */}
+      {showAddUser && (
+        <AddUserModal 
+          onSave={handleAddUser}
+          onCancel={() => setShowAddUser(false)}
+          darkMode={darkMode}
+        />
+      )}
+
 
 
       <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8`}>
         <div className="max-w-7xl mx-auto">
           {/* Header */}
-          <div className="mb-8">
-            <div className="mb-4"><AdminBackButton /></div>
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg">
-                <Users className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                  User Management
-                </h1>
-                <p className={`mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Manage and monitor all users in the system
-                </p>
+          <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+            <div>
+              <div className="mb-4"><AdminBackButton /></div>
+              <div className="flex items-center gap-4">
+                <div className="p-4 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg">
+                  <Users className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h1 className={`text-3xl font-black tracking-tight ${darkMode ? 'text-white font-black' : 'text-gray-900 font-black'}`}>
+                    User Management
+                  </h1>
+                  <p className={`mt-1 font-medium ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Manage and monitor all users in the system
+                  </p>
+                </div>
               </div>
             </div>
+            
+            <button
+              onClick={() => setShowAddUser(true)}
+              className="flex items-center justify-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl font-bold shadow-lg shadow-blue-500/25 transform hover:-translate-y-1 transition-all md:mb-1"
+            >
+              <Plus className="w-5 h-5" />
+              Add User
+            </button>
           </div>
 
           {/* Stats Cards */}
