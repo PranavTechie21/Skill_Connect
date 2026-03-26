@@ -222,10 +222,7 @@ export const ChromaGrid: React.FC<ChromaGridProps> = ({
             <span className="location">{c.location}</span>
           </footer>
         </article>
-      ))}
-      <div className="chroma-overlay" />
-      <div ref={fadeRef} className="chroma-fade" />
-    </div>
+      ))}    </div>
   );
 };
 

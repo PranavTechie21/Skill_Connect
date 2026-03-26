@@ -61,16 +61,14 @@ export function QuickApplyModal({
       {/* Modal */}
       <div className={cn(
         "relative w-full max-w-2xl p-8 rounded-3xl shadow-2xl transition-all duration-500",
-        darkMode ? "bg-gray-800" : "bg-white"
+        "bg-background border border-border/50"
       )}>
         {/* Close Button */}
         <button
           onClick={onClose}
           className={cn(
             "absolute right-4 top-4 p-2 rounded-xl transition-all",
-            darkMode 
-              ? "text-gray-400 hover:bg-gray-700 hover:text-white"
-              : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+            "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
           )}
         >
           <X className="w-5 h-5" />
@@ -80,16 +78,20 @@ export function QuickApplyModal({
         <div className="mb-6">
           <h2 className={cn(
             "text-2xl font-black mb-2",
-            darkMode ? "text-white" : "text-gray-900"
+            "text-foreground"
           )}>
             Quick Apply
           </h2>
-          <p className={darkMode ? "text-gray-400" : "text-gray-600"}>
+          <p className="text-muted-foreground">
             Applying for <span className="font-semibold">{jobTitle}</span>
             {companyName && (
               <> at <span className="font-semibold">{companyName}</span></>
             )}
           </p>
+          <div className="mt-3 text-sm text-muted-foreground flex items-center gap-2">
+            <span className="font-semibold">Match</span>
+            <span className="font-bold text-primary">{matchPercentage}%</span>
+          </div>
         </div>
 
         {/* Form */}

@@ -1,12 +1,15 @@
 import { ModeToggle } from "./ui/dark-mode-toggle";
+import { LanguageSwitcher } from "./language-switcher";
 import { buttonVariants } from "./ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { cn, normalizeUserType } from "@/lib/utils";
 import { MainNav } from "./main-nav";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 
 export function SiteHeader() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
   const isMarketingHome = location.pathname === "/";
@@ -26,6 +29,7 @@ export function SiteHeader() {
       <div className="container flex h-14 items-center">
         <MainNav />
         <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <LanguageSwitcher />
           <ModeToggle />
           {user && !isMarketingHome ? (
             <>
@@ -41,7 +45,7 @@ export function SiteHeader() {
                       "w-9 px-0"
                     )}
                   >
-                    Dashboard
+                    {t("nav.dashboard")}
                   </Link>
                 );
               })()}
@@ -52,7 +56,7 @@ export function SiteHeader() {
                   "w-9 px-0"
                 )}
               >
-                Logout
+                {t("nav.logout")}
               </button>
             </>
           ) : (
@@ -64,7 +68,7 @@ export function SiteHeader() {
                   "w-9 px-0"
                 )}
               >
-                Login
+                {t("nav.signIn")}
               </Link>
               <Link
                 to="/signup"
@@ -73,7 +77,7 @@ export function SiteHeader() {
                   "w-9 px-0"
                 )}
               >
-                Sign Up
+                {t("nav.signUp")}
               </Link>
             </>
           )}

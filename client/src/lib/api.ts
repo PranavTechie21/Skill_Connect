@@ -19,7 +19,8 @@ export const apiFetch = async (url: string, options?: RequestInit) => {
 	try {
 		const response = await fetch(fullUrl, {
 			...options,
-			headers: { ...(options && (options as any).headers), ...headers }, // Merge headers
+			// Merge caller-provided headers with our defaults (currently none).
+			headers: { ...(options && (options as any).headers), ...headers },
 			credentials: options?.credentials ?? "include", // Allow overriding default 'include'
 		});
 		
@@ -183,6 +184,9 @@ export const api = {
 
     async export(filters = {}) {
       return api.get('/jobs/export', filters);
+    },
+    async getRecommended() {
+      return api.get('/jobs?page=1&itemsPerPage=4'); // Use basic jobs list as fallback
     }
   }
 };

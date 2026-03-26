@@ -1,6 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Sora:wght@100..800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Outfit', sans-serif;
+  }
+}
 
 @layer base {
   :root {
@@ -82,9 +90,14 @@ html {
 }
 
 /* Hide Google Translate Banner artifacts */
-.goog-te-banner-frame, 
-.goog-te-balloon-frame, 
-#goog-gt-tt, 
+/* Google injects slightly different structures depending on browser/runtime. */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+.goog-te-balloon-frame,
+#goog-gt-tt,
+#goog-gt-tt iframe,
+.goog-te-menu-frame,
+.goog-te-menu2,
 .goog-te-menu-value span {
   display: none !important;
 }

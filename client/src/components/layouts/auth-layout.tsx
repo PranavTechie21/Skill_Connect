@@ -1,6 +1,9 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { normalizeUserType } from '@/lib/utils';
+import { SkillConnectAssistant } from '@/components/skillconnect-assistant';
+
+const SHOW_SUPPORT_CHATBOT = true;
 
 interface AuthLayoutProps {
   userType: 'Professional' | 'Employer';
@@ -31,6 +34,7 @@ export default function AuthLayout({ userType }: AuthLayoutProps) {
       <main className="container mx-auto px-4 py-8">
         <Outlet />
       </main>
+      {SHOW_SUPPORT_CHATBOT ? <SkillConnectAssistant /> : null}
     </div>
   );
 }

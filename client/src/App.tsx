@@ -222,7 +222,7 @@ function AppContent() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      {/* <SupportChatbot /> */}
+      {/* <SkillConnectAssistant /> */}
     </div>
   );
 }

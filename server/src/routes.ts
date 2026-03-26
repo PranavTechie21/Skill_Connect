@@ -1,6 +1,7 @@
 import dashboardRouter from "./routes/dashboard";
 import jobsRouter from "./routes/jobs";
 import adminStoriesRouter from "./routes/admin/stories";
+import authOauthRouter, { passport as oauthPassport } from "./routes/auth-oauth";
 import { type Express, Router } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
@@ -170,6 +171,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: 'skillconnect.sid'
       }) as any
     );
+
+    // Passport initialization for OAuth routes
+    app.use(oauthPassport.initialize());
 
     // Add middleware to ensure session cookie always has correct path
     app.use((req, res, next) => {
@@ -816,6 +820,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple test route to verify routing works
   app.get("/api/test", (req, res) => {
     res.json({ message: "Test route works!", path: req.path, method: req.method });
+  });
+
+  // OAuth routes (Google)
+  app.use("/api/auth", authOauthRouter);
+
+  // AI assistant (Gemini) endpoint for the in-app SupportChatbot
+  // Expected request:
+  //  { messages: [{ role: "user" | "assistant", text: string }, ...] }
+  // Expected response:
+  //  { reply: string }
+  app.post("/api/assistant/chat", async (req, res) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res
+          .status(500)
+          .json({ error: "GEMINI_API_KEY is not set", message: "Missing Gemini API key" });
+      }
+
+      const model =
+        process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+      const { messages } = req.body ?? {};
+      if (!Array.isArray(messages)) {
+        return res
+          .status(400)
+          .json({ error: "Invalid request", message: "Expected { messages: [...] }" });
+      }
+
+      // Gemini expects roles: "user" and "model" (not "assistant").
+      const contents = messages
+        .filter((m: any) => m && typeof m.text === "string")
+        .map((m: any) => {
+          const role = m.role === "assistant" ? "model" : "user";
+          return {
+            role,
+            parts: [{ text: m.text }],
+          };
+        });
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+        model
+      )}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+      const r = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents,
+        }),
+      });
+
+      if (!r.ok) {
+        const errText = await r.text().catch(() => "");
+        return res.status(502).json({
+          error: "Upstream Gemini error",
+          status: r.status,
+          message: errText || "Gemini request failed",
+        });
+      }
+
+      const data: any = await r.json();
+      const parts = data?.candidates?.[0]?.content?.parts;
+
+      const reply =
+        Array.isArray(parts) ? parts.map((p: any) => p?.text).filter(Boolean).join("") : "";
+
+      if (!reply) {
+        return res.status(502).json({
+          error: "No reply generated",
+          message: "Gemini returned an empty response",
+        });
+      }
+
+      return res.json({ reply });
+    } catch (error: any) {
+      console.error("Assistant error:", error);
+      return res.status(500).json({
+        error: "Assistant failed",
+        message: error?.message || "Unknown error",
+      });
+    }
   });
 
   // Get current user
