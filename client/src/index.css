@@ -75,3 +75,25 @@
     color: hsl(var(--foreground));
   }
 }
+
+/* Small UX polish */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Hide Google Translate Banner artifacts */
+.goog-te-banner-frame, 
+.goog-te-balloon-frame, 
+#goog-gt-tt, 
+.goog-te-menu-value span {
+  display: none !important;
+}
+
+.goog-text-highlight {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+body {
+  top: 0 !important;
+}
