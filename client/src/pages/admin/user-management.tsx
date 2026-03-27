@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import {
-  Users, Search, MoreVertical, Eye, Edit, Trash2, Ban,
-  CheckCircle, XCircle, Mail, Phone, MapPin, Calendar, Plus, RefreshCw, AlertTriangle,
-  Shield, Activity, Clock, Zap, Crown, TrendingUp, Download, X, Save
+  Users, Search, Eye, Edit, Trash2, Ban,
+  CheckCircle, Plus, RefreshCw, AlertTriangle,
+  Shield, Activity, Clock, Zap, TrendingUp, X, Save
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import { adminService } from '@/lib/admin-service';
 import { useToast } from '@/hooks/use-toast';
 import AdminBackButton from '@/components/AdminBackButton';
@@ -891,7 +890,6 @@ const ConfirmationModal = ({
   // Main Component
 const UserManagement = () => {
   const { theme } = useTheme();
-  const navigate = useNavigate();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   
   const [users, setUsers] = useState<DisplayUser[]>([]);

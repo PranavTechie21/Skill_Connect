@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AdminBackButton from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import {
@@ -8,6 +8,8 @@ import {
   Eye, Sparkles, Zap, Star, Award, TrendingDown, FileText
 } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, Pie, Cell, PieChart as RechartsPieChart } from 'recharts';
+import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
 
 // Mock data for demonstration
 const mockAnalyticsData = {
@@ -52,21 +54,257 @@ const mockAnalyticsData = {
   }
 };
 
+type AnalyticsData = typeof mockAnalyticsData;
+type TimeRangeKey = '7d' | '30d' | '90d' | '1y';
+
+const round = (value: number) => Math.max(0, Math.round(value));
+
+const transformByRange = (range: TimeRangeKey): AnalyticsData => {
+  const multipliers: Record<TimeRangeKey, number> = {
+    '7d': 0.24,
+    '30d': 1,
+    '90d': 2.7,
+    '1y': 9.8,
+  };
+
+  const m = multipliers[range];
+  const base = mockAnalyticsData;
+
+  const growthLabels: Record<TimeRangeKey, string[]> = {
+    '7d': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+    '30d': ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+    '90d': ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+    '1y': ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'],
+  };
+
+  const userGrowth = base.userGrowth.map((row, idx) => {
+    const phase = 1 + idx * 0.08;
+    const adjustedUsers = row.users * m * phase;
+    return {
+      month: growthLabels[range][idx] ?? row.month,
+      users: round(adjustedUsers),
+      employees: round(adjustedUsers * 0.64),
+      employers: round(adjustedUsers * 0.36),
+    };
+  });
+
+  const shiftByRange: Record<TimeRangeKey, number[]> = {
+    '7d': [2, -1, 0, -1, 0],
+    '30d': [0, 0, 0, 0, 0],
+    '90d': [-2, 1, 1, 0, 0],
+    '1y': [-4, 2, 1, 1, 0],
+  };
+
+  const jobCategories = base.jobCategories.map((cat, idx) => ({
+    ...cat,
+    value: Math.max(5, cat.value + shiftByRange[range][idx]),
+  }));
+
+  const dynamicStats = {
+    totalUsers: round(base.stats.totalUsers * m),
+    newUsers: round(base.stats.newUsers * (range === '7d' ? 0.35 : range === '1y' ? 6.8 : m)),
+    activeJobs: round(base.stats.activeJobs * (range === '1y' ? 2.9 : range === '90d' ? 1.9 : range === '7d' ? 0.55 : 1)),
+    newJobs: round(base.stats.newJobs * (range === '7d' ? 0.35 : range === '1y' ? 6 : m)),
+    applications: round(base.stats.applications * (range === '1y' ? 3.3 : range === '90d' ? 2.1 : range === '7d' ? 0.45 : 1)),
+    newApplications: round(base.stats.newApplications * (range === '7d' ? 0.32 : range === '1y' ? 5.9 : m)),
+    successRate: range === '7d' ? 73 : range === '30d' ? 76 : range === '90d' ? 78 : 81,
+    successRateChange: range === '7d' ? 1 : range === '30d' ? 3 : range === '90d' ? 4 : 7,
+  };
+
+  const performanceMetrics = {
+    employeeSatisfaction: range === '7d' ? 89 : range === '30d' ? 92 : range === '90d' ? 93 : 94,
+    employerSatisfaction: range === '7d' ? 84 : range === '30d' ? 88 : range === '90d' ? 89 : 91,
+    placementRate: range === '7d' ? 71 : range === '30d' ? 76 : range === '90d' ? 79 : 83,
+    avgTimeToHire: range === '7d' ? 17 : range === '30d' ? 14 : range === '90d' ? 12 : 10,
+    timeToHireChange: range === '7d' ? -1 : range === '30d' ? -3 : range === '90d' ? -4 : -6,
+  };
+
+  const activityByRange: Record<TimeRangeKey, string[]> = {
+    '7d': ['2 minutes ago', '5 minutes ago', '12 minutes ago', '25 minutes ago', '1 hour ago'],
+    '30d': ['Today, 9:25 AM', 'Today, 8:50 AM', 'Today, 8:20 AM', 'Today, 7:35 AM', 'Today, 6:40 AM'],
+    '90d': ['1 day ago', '2 days ago', '3 days ago', '4 days ago', '6 days ago'],
+    '1y': ['Last week', '2 weeks ago', '3 weeks ago', 'Last month', '2 months ago'],
+  };
+
+  const recentActivities = base.recentActivities.map((a, i) => ({
+    ...a,
+    time: activityByRange[range][i] ?? a.time,
+  }));
+
+  return {
+    userGrowth,
+    jobCategories,
+    recentActivities,
+    performanceMetrics,
+    stats: dynamicStats,
+  };
+};
+
 const Analytics = () => {
   const { theme } = useTheme();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
-  const [timeRange, setTimeRange] = useState('30d');
+  const [timeRange, setTimeRange] = useState<TimeRangeKey>('30d');
   const [loading, setLoading] = useState(false);
-  const [analyticsData, setAnalyticsData] = useState(mockAnalyticsData);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(mockAnalyticsData);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     // Simulate data fetch based on time range
     setLoading(true);
     setTimeout(() => {
-      setAnalyticsData(mockAnalyticsData);
+      setAnalyticsData(transformByRange(timeRange));
       setLoading(false);
     }, 500);
   }, [timeRange]);
+
+  useEffect(() => {
+    const onClickOutside = (event: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(event.target as Node)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
+
+  const getRangeLabel = () => {
+    switch (timeRange) {
+      case '7d': return 'Last 7 days';
+      case '30d': return 'Last 30 days';
+      case '90d': return 'Last 90 days';
+      case '1y': return 'Last year';
+      default: return 'Custom range';
+    }
+  };
+
+  const getExportPayload = () => ({
+    exportedAt: new Date().toISOString(),
+    timeRange: getRangeLabel(),
+    stats: analyticsData.stats,
+    performanceMetrics: analyticsData.performanceMetrics,
+    userGrowth: analyticsData.userGrowth,
+    jobCategories: analyticsData.jobCategories,
+    recentActivities: analyticsData.recentActivities,
+  });
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportJSON = () => {
+    const content = JSON.stringify(getExportPayload(), null, 2);
+    downloadBlob(new Blob([content], { type: 'application/json' }), `analytics-${timeRange}.json`);
+  };
+
+  const exportCSV = () => {
+    const lines: string[] = [];
+    lines.push('Section,Metric,Value');
+    lines.push(`Meta,Exported At,${new Date().toISOString()}`);
+    lines.push(`Meta,Time Range,${getRangeLabel()}`);
+    lines.push('');
+    lines.push('Stats,Metric,Value');
+    Object.entries(analyticsData.stats).forEach(([k, v]) => lines.push(`Stats,${k},${v}`));
+    lines.push('');
+    lines.push('Performance,Metric,Value');
+    Object.entries(analyticsData.performanceMetrics).forEach(([k, v]) => lines.push(`Performance,${k},${v}`));
+    lines.push('');
+    lines.push('User Growth,Month,Users,Employees,Employers');
+    analyticsData.userGrowth.forEach((row) => lines.push(`User Growth,${row.month},${row.users},${row.employees},${row.employers}`));
+    lines.push('');
+    lines.push('Job Categories,Category,Share(%)');
+    analyticsData.jobCategories.forEach((row) => lines.push(`Job Categories,${row.name},${row.value}`));
+    lines.push('');
+    lines.push('Recent Activities,Type,Action,User,Time');
+    analyticsData.recentActivities.forEach((row) => {
+      lines.push(`Recent Activities,${row.type},"${row.action.replace(/"/g, '""')}","${row.user.replace(/"/g, '""')}",${row.time}`);
+    });
+    downloadBlob(new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' }), `analytics-${timeRange}.csv`);
+  };
+
+  const exportExcel = () => {
+    const wb = XLSX.utils.book_new();
+    const statsSheet = XLSX.utils.json_to_sheet(Object.entries(analyticsData.stats).map(([metric, value]) => ({ metric, value })));
+    const perfSheet = XLSX.utils.json_to_sheet(Object.entries(analyticsData.performanceMetrics).map(([metric, value]) => ({ metric, value })));
+    const growthSheet = XLSX.utils.json_to_sheet(analyticsData.userGrowth);
+    const categorySheet = XLSX.utils.json_to_sheet(analyticsData.jobCategories);
+    const activitySheet = XLSX.utils.json_to_sheet(analyticsData.recentActivities);
+    XLSX.utils.book_append_sheet(wb, statsSheet, 'Stats');
+    XLSX.utils.book_append_sheet(wb, perfSheet, 'Performance');
+    XLSX.utils.book_append_sheet(wb, growthSheet, 'UserGrowth');
+    XLSX.utils.book_append_sheet(wb, categorySheet, 'Categories');
+    XLSX.utils.book_append_sheet(wb, activitySheet, 'Activities');
+    XLSX.writeFile(wb, `analytics-${timeRange}.xlsx`);
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+    let y = 48;
+    doc.setFontSize(18);
+    doc.text('Analytics Dashboard Report', 40, y);
+    y += 22;
+    doc.setFontSize(11);
+    doc.text(`Time Range: ${getRangeLabel()}`, 40, y);
+    y += 16;
+    doc.text(`Exported At: ${new Date().toLocaleString()}`, 40, y);
+    y += 26;
+
+    doc.setFontSize(13);
+    doc.text('Key Stats', 40, y);
+    y += 18;
+    doc.setFontSize(11);
+    Object.entries(analyticsData.stats).forEach(([k, v]) => {
+      doc.text(`${k}: ${v}`, 46, y);
+      y += 14;
+    });
+
+    y += 10;
+    doc.setFontSize(13);
+    doc.text('Performance Metrics', 40, y);
+    y += 18;
+    doc.setFontSize(11);
+    Object.entries(analyticsData.performanceMetrics).forEach(([k, v]) => {
+      doc.text(`${k}: ${v}`, 46, y);
+      y += 14;
+    });
+
+    y += 10;
+    doc.setFontSize(13);
+    doc.text('Top Job Categories', 40, y);
+    y += 18;
+    doc.setFontSize(11);
+    analyticsData.jobCategories.forEach((c) => {
+      doc.text(`${c.name}: ${c.value}%`, 46, y);
+      y += 14;
+    });
+
+    doc.save(`analytics-${timeRange}.pdf`);
+  };
+
+  const handleExport = (format: 'pdf' | 'excel' | 'json' | 'csv') => {
+    switch (format) {
+      case 'pdf':
+        exportPDF();
+        break;
+      case 'excel':
+        exportExcel();
+        break;
+      case 'json':
+        exportJSON();
+        break;
+      case 'csv':
+        exportCSV();
+        break;
+    }
+    setExportOpen(false);
+  };
 
   return (
     <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8 relative overflow-hidden`}>
@@ -117,11 +355,37 @@ const Analytics = () => {
               <option value="90d">Last 90 days</option>
               <option value="1y">Last year</option>
             </select>
-            <button className="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:shadow-xl hover:scale-105 transition-all overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <Download className="w-5 h-5 relative z-10 group-hover:animate-bounce" />
-              <span className="relative z-10">Export</span>
-            </button>
+            <div className="relative" ref={exportRef}>
+              <button
+                onClick={() => setExportOpen((v) => !v)}
+                className="group relative flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:shadow-xl hover:scale-105 transition-all overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <Download className="w-5 h-5 relative z-10 group-hover:animate-bounce" />
+                <span className="relative z-10">Export</span>
+              </button>
+
+              {exportOpen && (
+                <div className={`absolute right-0 mt-2 w-48 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-xl shadow-xl overflow-hidden z-30`}>
+                  {[
+                    { label: 'PDF (.pdf)', value: 'pdf' as const },
+                    { label: 'Excel (.xlsx)', value: 'excel' as const },
+                    { label: 'CSV (.csv)', value: 'csv' as const },
+                    { label: 'JSON (.json)', value: 'json' as const },
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => handleExport(opt.value)}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-medium ${
+                        darkMode ? 'text-gray-100 hover:bg-gray-700' : 'text-gray-700 hover:bg-gray-50'
+                      } transition-colors`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

@@ -3,7 +3,7 @@ import {
   Settings, User, Shield, Bell, LogOut,
   Save, X, Eye, EyeOff, Mail, Smartphone,
   Palette, Download, Trash2,
-  Check, Monitor, Smartphone as PhoneIcon
+  Check, Monitor, Smartphone as PhoneIcon, CheckCircle2, Loader2
 } from 'lucide-react';
 import { useTheme } from "@/components/theme-provider";
 import { useNavigate } from 'react-router-dom';
@@ -23,6 +23,8 @@ const SettingsPage = () => {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSavedToast, setShowSavedToast] = useState(false);
   const settingsStorageKey = user?.id ? `employee-settings:${user.id}` : 'employee-settings:guest';
   const resolveAppearanceTheme = () => (theme === 'system' ? 'auto' : theme);
 
@@ -110,7 +112,11 @@ const SettingsPage = () => {
     { id: 'preferences', label: 'Preferences', icon: Settings, color: 'orange' }
   ];
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!isEditing || isSaving) return;
+    setIsSaving(true);
+    await new Promise((resolve) => setTimeout(resolve, 900));
+
     // Apply app theme from appearance settings.
     const selectedTheme = settings.appearance.theme;
     if (selectedTheme === 'auto') {
@@ -131,6 +137,9 @@ const SettingsPage = () => {
     localStorage.setItem(`${settingsStorageKey}:savedAt`, savedAt);
     setIsEditing(false);
     setLastSavedAt(savedAt);
+    setIsSaving(false);
+    setShowSavedToast(true);
+    setTimeout(() => setShowSavedToast(false), 2800);
   };
 
   const handleCancel = () => {
@@ -159,10 +168,12 @@ const SettingsPage = () => {
   };
 
   const updateAccount = (field: keyof typeof settings.account, value: string) => {
+    if (!isEditing) return;
     setSettings(prev => ({ ...prev, account: { ...prev.account, [field]: value } }));
   };
 
   const updateAppearance = (field: keyof typeof settings.appearance, value: string) => {
+    if (!isEditing) return;
     setSettings(prev => ({ ...prev, appearance: { ...prev.appearance, [field]: value } }));
   };
 
@@ -173,10 +184,12 @@ const SettingsPage = () => {
   };
 
   const toggleSecurity = (field: keyof typeof settings.security) => {
+    if (!isEditing) return;
     setSettings(prev => ({ ...prev, security: { ...prev.security, [field]: !prev.security[field] } }));
   };
 
   const toggleNotification = (channel: 'email' | 'push', key: string) => {
+    if (!isEditing) return;
     setSettings(prev => ({
       ...prev,
       notifications: {
@@ -190,6 +203,7 @@ const SettingsPage = () => {
   };
 
   const togglePreference = (key: keyof typeof settings.preferences) => {
+    if (!isEditing) return;
     setSettings(prev => ({
       ...prev,
       preferences: { ...prev.preferences, [key]: !prev.preferences[key] },
@@ -249,11 +263,12 @@ const SettingsPage = () => {
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
+                disabled={isSaving}
                 className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
                   darkMode
                     ? 'bg-blue-600 hover:bg-blue-700 text-white'
                     : 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white'
-                }`}
+                } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
                 <Save className="w-4 h-4" />
                 Edit Settings
@@ -262,25 +277,27 @@ const SettingsPage = () => {
               <div className="flex gap-2">
                 <button
                   onClick={handleCancel}
+                  disabled={isSaving}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
                     darkMode
                       ? 'bg-gray-700 hover:bg-gray-600 text-white'
                       : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                  }`}
+                  } disabled:opacity-60 disabled:cursor-not-allowed`}
                 >
                   <X className="w-4 h-4" />
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
+                  disabled={isSaving}
                   className={`flex items-center gap-2 px-4 py-3 rounded-xl font-semibold transition-all ${
                     darkMode
                       ? 'bg-green-600 hover:bg-green-700 text-white'
                       : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white'
-                  }`}
+                  } disabled:opacity-70 disabled:cursor-not-allowed`}
                 >
-                  <Save className="w-4 h-4" />
-                  Save Changes
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  {isSaving ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             )}
@@ -920,6 +937,7 @@ const SettingsPage = () => {
                         <button
                           key={theme}
                           onClick={() => updateAppearance('theme', theme)}
+                          disabled={!isEditing}
                           className={`w-full p-3 rounded-xl text-left transition-all ${
                             settings.appearance.theme === theme
                               ? darkMode
@@ -928,7 +946,7 @@ const SettingsPage = () => {
                               : darkMode
                               ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                          } disabled:opacity-55 disabled:cursor-not-allowed`}
                         >
                           {theme.charAt(0).toUpperCase() + theme.slice(1)}
                         </button>
@@ -950,6 +968,7 @@ const SettingsPage = () => {
                         <button
                           key={size}
                           onClick={() => updateAppearance('fontSize', size)}
+                          disabled={!isEditing}
                           className={`w-full p-3 rounded-xl text-left transition-all ${
                             settings.appearance.fontSize === size
                               ? darkMode
@@ -958,7 +977,7 @@ const SettingsPage = () => {
                               : darkMode
                               ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                          } disabled:opacity-55 disabled:cursor-not-allowed`}
                         >
                           {size.charAt(0).toUpperCase() + size.slice(1)}
                         </button>
@@ -980,6 +999,7 @@ const SettingsPage = () => {
                         <button
                           key={density}
                           onClick={() => updateAppearance('density', density)}
+                          disabled={!isEditing}
                           className={`w-full p-3 rounded-xl text-left transition-all ${
                             settings.appearance.density === density
                               ? darkMode
@@ -988,7 +1008,7 @@ const SettingsPage = () => {
                               : darkMode
                               ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                          } disabled:opacity-55 disabled:cursor-not-allowed`}
                         >
                           {density.charAt(0).toUpperCase() + density.slice(1)}
                         </button>
@@ -1037,11 +1057,12 @@ const SettingsPage = () => {
                         </h4>
                         <button
                           onClick={() => togglePreference(key as keyof typeof settings.preferences)}
+                          disabled={!isEditing}
                           className={`w-12 h-6 rounded-full transition-all ${
                           value
                             ? darkMode ? 'bg-green-500' : 'bg-green-600'
                             : darkMode ? 'bg-gray-600' : 'bg-gray-300'
-                        }`}>
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}>
                           <div className={`w-4 h-4 rounded-full bg-white transform transition-transform ${
                             value ? 'translate-x-7' : 'translate-x-1'
                           }`} />
@@ -1063,6 +1084,22 @@ const SettingsPage = () => {
           </div>
         </div>
       </div>
+
+      {showSavedToast && (
+        <div className="fixed bottom-5 right-5 z-[70]">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl border ${
+            darkMode
+              ? 'bg-emerald-900/85 border-emerald-700 text-emerald-100'
+              : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+          }`}>
+            <CheckCircle2 className="w-5 h-5" />
+            <div>
+              <p className="font-semibold text-sm">Changes saved</p>
+              <p className="text-xs opacity-90">Your settings are updated successfully.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
