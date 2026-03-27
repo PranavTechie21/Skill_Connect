@@ -18,7 +18,7 @@ const ROUTES = {
 import {
   Search, MapPin, Bookmark, Bell, MessageSquare, User, FileText,
   TrendingUp, Clock, CheckCircle, XCircle, Briefcase, Filter,
-  Settings, Star, ArrowRight, LogOut, ChevronDown, Zap, Target,
+  Settings, ArrowRight, LogOut, ChevronDown, Zap, Target,
   Award, Heart, Moon, Sun, Menu, X, Home, BarChart3,
   Upload, Calendar, Building2
 } from 'lucide-react';
@@ -57,6 +57,26 @@ interface UserStats {
   profileCompletion: number;
 }
 
+const formatINR = (amount: number) =>
+  new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format(amount);
+
+const formatSalaryINR = (salaryMin?: number | null, salaryMax?: number | null, fallback?: string) => {
+  if (typeof salaryMin === 'number' && typeof salaryMax === 'number') {
+    return `${formatINR(salaryMin)} - ${formatINR(salaryMax)}`;
+  }
+
+  if (fallback) {
+    // Convert known dollar-like formats to rupee symbol for display consistency.
+    return fallback.replace(/\$/g, '₹');
+  }
+
+  return 'Not specified';
+};
+
 const mockApplications: Application[] = [
   {
     id: '1',
@@ -85,6 +105,8 @@ const mockApplications: Application[] = [
 ];
 
 const EmployeeDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const darkMode = theme === 'dark';
   const { t } = useLanguage();
@@ -126,7 +148,7 @@ const EmployeeDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [user?.id]);
 
   // Handle clicking outside to close dropdowns
   useEffect(() => {
@@ -143,9 +165,6 @@ const EmployeeDashboard: React.FC = () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
-  const navigate = useNavigate();
-  const { user, logout } = useAuth();
 
   const avatarSrc = (() => {
     const raw = user?.profilePhoto;
@@ -227,9 +246,7 @@ const fetchDashboardData = async () => {
         company: job.company?.name || job.companyName || 'N/A',
         location: job.location || 'Remote',
         skills: Array.isArray(job.skills) ? job.skills : [],
-        salary: job.salaryMin && job.salaryMax 
-          ? `$${job.salaryMin/1000}k - $${job.salaryMax/1000}k` 
-          : job.salary || 'Not specified',
+        salary: formatSalaryINR(job.salaryMin, job.salaryMax, job.salary),
         matchPercentage: job.matchPercentage || Math.floor(Math.random() * (98 - 75 + 1) + 75),
         postedTime: job.createdAt 
           ? new Date(job.createdAt).toLocaleDateString()
@@ -243,7 +260,59 @@ const fetchDashboardData = async () => {
     }
 
     if (data.recentApplications) {
-      setRecentApplications(data.recentApplications);
+      let normalizedRecentApplications = data.recentApplications;
+
+      // Fallback to realtime applications endpoint when dashboard payload has unresolved job/company labels.
+      const hasUnknownRows = normalizedRecentApplications.some(
+        (app: any) =>
+          !app?.jobTitle ||
+          !app?.company ||
+          app.jobTitle === 'Unknown Position' ||
+          app.company === 'Unknown Company'
+      );
+
+      if (hasUnknownRows && user?.id) {
+        const appsRes = await apiFetch(`/api/applications?applicantId=${user.id}`);
+        if (appsRes.ok) {
+          const appsData = await appsRes.json();
+          const baseRows = (Array.isArray(appsData) ? appsData : [])
+            .slice(0, 3)
+            .map((app: any) => ({
+              id: app.id,
+              jobId: app.jobId,
+              jobTitle: app?.job?.title || 'Unknown Position',
+              company: app?.job?.company?.name || app?.company?.name || 'Unknown Company',
+              appliedDate: app.appliedAt,
+              status: app.status,
+            }));
+
+          // If some rows are still unresolved, fetch job details by id to enrich in realtime.
+          normalizedRecentApplications = await Promise.all(
+            baseRows.map(async (row: any) => {
+              const needsJobLookup =
+                (!!row.jobId) &&
+                (row.jobTitle === 'Unknown Position' || row.company === 'Unknown Company');
+
+              if (!needsJobLookup) return row;
+
+              try {
+                const jobRes = await apiFetch(`/api/jobs/${row.jobId}`);
+                if (!jobRes.ok) return row;
+                const jobData = await jobRes.json();
+                return {
+                  ...row,
+                  jobTitle: jobData?.title || row.jobTitle,
+                  company: jobData?.company?.name || jobData?.companyName || row.company,
+                };
+              } catch {
+                return row;
+              }
+            })
+          );
+        }
+      }
+
+      setRecentApplications(normalizedRecentApplications);
     }
   } catch (error) {
     console.error("Failed to fetch dashboard data:", error);
@@ -1125,10 +1194,10 @@ const fetchDashboardData = async () => {
                             </div>
                             <div>
                               <h3 className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                                {application.jobTitle}
+                                {application.jobTitle === 'Unknown Position' ? `Application #${application.id}` : application.jobTitle}
                               </h3>
                               <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
-                                {application.company}
+                                {application.company === 'Unknown Company' ? 'Company details pending' : application.company}
                               </p>
                               <p className={`text-sm ${darkMode ? 'text-gray-500' : 'text-gray-500'}`}>
                                 Applied on {application.appliedDate}

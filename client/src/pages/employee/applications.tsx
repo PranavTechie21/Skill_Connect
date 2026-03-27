@@ -85,7 +85,62 @@ export default function Applications() {
 
       const data = await response.json();
       console.log('Fetched applications:', data);
-      return data as Application[];
+
+      const normalized = await Promise.all(
+        (Array.isArray(data) ? data : []).map(async (app: any) => {
+          const mapped = {
+            ...app,
+            job: app?.job
+              ? {
+                  ...app.job,
+                  company: app.job.company || app.company || { name: 'Unknown Company' },
+                }
+              : undefined,
+          } as Application;
+
+          const missingJobInfo =
+            !mapped.job?.title ||
+            !mapped.job?.company?.name ||
+            mapped.job?.title === 'Unknown Position' ||
+            mapped.job?.company?.name === 'Unknown Company';
+
+          if (!missingJobInfo || !app?.jobId) return mapped;
+
+          try {
+            const jobRes = await fetch(`/api/jobs/${app.jobId}`, {
+              credentials: 'include',
+              headers: { Accept: 'application/json' },
+            });
+            if (!jobRes.ok) return mapped;
+            const jobData = await jobRes.json();
+
+            return {
+              ...mapped,
+              job: {
+                title: jobData?.title || mapped.job?.title || 'Untitled Role',
+                company: {
+                  name:
+                    jobData?.company?.name ||
+                    jobData?.companyName ||
+                    mapped.job?.company?.name ||
+                    'Unknown Company',
+                },
+                location: jobData?.location || mapped.job?.location || 'Location not specified',
+                jobType: jobData?.jobType || mapped.job?.jobType || 'Role type not specified',
+                salary:
+                  mapped.job?.salary ||
+                  (jobData?.salaryMin && jobData?.salaryMax
+                    ? `${jobData.salaryMin} - ${jobData.salaryMax}`
+                    : 'Salary not specified'),
+              },
+            } as Application;
+          } catch {
+            return mapped;
+          }
+        })
+      );
+
+      return normalized;
     },
     enabled: !!user?.id,
     staleTime: 30000,
@@ -138,16 +193,25 @@ export default function Applications() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    if (!dateString) return '-';
+    const dt = new Date(dateString);
+    if (Number.isNaN(dt.getTime())) return '-';
+    return dt.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric'
     });
   };
 
+  const getJobTitle = (app: Application) => app.job?.title || 'Untitled Role';
+  const getCompanyName = (app: any) =>
+    app?.job?.company?.name || app?.company?.name || app?.job?.companyName || 'Unknown Company';
+
   const filteredApplications = applications.filter(app => {
-    const matchesSearch = app.job && (app.job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         app.job.company.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const query = searchQuery.trim().toLowerCase();
+    const title = getJobTitle(app).toLowerCase();
+    const company = getCompanyName(app).toLowerCase();
+    const matchesSearch = query.length === 0 || title.includes(query) || company.includes(query);
     const matchesStatus = statusFilter === 'all' || app.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -243,22 +307,26 @@ export default function Applications() {
   }
 
   return (
-    <div className="min-h-screen transition-colors duration-300 bg-[#0f172a]">
+    <div className={`min-h-screen transition-colors duration-300 ${
+      darkMode ? 'bg-[#0f172a]' : 'bg-gray-50'
+    }`}>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <button
               onClick={() => window.history.back()}
-              className="p-2 rounded-xl transition-all hover:bg-gray-800/50"
+              className={`p-2 rounded-xl transition-all ${
+                darkMode ? 'hover:bg-gray-800/50' : 'hover:bg-gray-100'
+              }`}
             >
-              <ArrowLeft className="w-6 h-6 text-gray-400" />
+              <ArrowLeft className={`w-6 h-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
             </button>
             <div>
-              <h1 className="text-3xl font-black text-gray-100">
+              <h1 className={`text-3xl font-black ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>
                 My Applications
               </h1>
-              <p className="text-gray-400">
+              <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
                 Track and manage your job applications
               </p>
             </div>
@@ -268,47 +336,53 @@ export default function Applications() {
 
         {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <div className="rounded-2xl p-5 bg-gray-800/80 shadow-lg border border-gray-700/50">
+          <div className={`rounded-2xl p-5 shadow-lg border ${
+            darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-100'
+          }`}>
             <div className="flex items-center justify-between mb-3">
-              <div className="p-2 rounded-lg bg-blue-500/10">
-                <FileText className="w-5 h-5 text-blue-400" />
+              <div className={`p-2 rounded-lg ${darkMode ? 'bg-blue-500/10' : 'bg-blue-50'}`}>
+                <FileText className={`w-5 h-5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
               </div>
-              <TrendingUp className="w-4 h-4 text-blue-400" />
+              <TrendingUp className={`w-4 h-4 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
             </div>
-            <p className="text-sm font-semibold text-gray-400">
+            <p className={`text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               Total Applications
             </p>
-            <p className="text-3xl font-black text-gray-200">
+            <p className={`text-3xl font-black ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
               {totalApplications}
             </p>
           </div>
 
-          <div className="rounded-2xl p-5 bg-gray-800/80 shadow-lg border border-gray-700/50">
+          <div className={`rounded-2xl p-5 shadow-lg border ${
+            darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-100'
+          }`}>
             <div className="flex items-center justify-between mb-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <CheckCircle className="w-5 h-5 text-green-400" />
+              <div className={`p-2 rounded-lg ${darkMode ? 'bg-green-500/10' : 'bg-emerald-50'}`}>
+                <CheckCircle className={`w-5 h-5 ${darkMode ? 'text-green-400' : 'text-emerald-600'}`} />
               </div>
-              <BarChart3 className="w-4 h-4 text-green-400" />
+              <BarChart3 className={`w-4 h-4 ${darkMode ? 'text-green-400' : 'text-emerald-600'}`} />
             </div>
-            <p className="text-sm font-semibold text-gray-400">
+            <p className={`text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               In Progress
             </p>
-            <p className="text-3xl font-black text-gray-200">
+            <p className={`text-3xl font-black ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
               {statusCounts.reviewed + statusCounts.interview + statusCounts.pending || 0}
             </p>
           </div>
 
-          <div className="rounded-2xl p-5 bg-gray-800/80 shadow-lg border border-gray-700/50">
+          <div className={`rounded-2xl p-5 shadow-lg border ${
+            darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-100'
+          }`}>
             <div className="flex items-center justify-between mb-3">
-              <div className="p-2 rounded-lg bg-purple-500/10">
-                <Users className="w-5 h-5 text-purple-400" />
+              <div className={`p-2 rounded-lg ${darkMode ? 'bg-purple-500/10' : 'bg-purple-50'}`}>
+                <Users className={`w-5 h-5 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
               </div>
-              <Eye className="w-4 h-4 text-purple-400" />
+              <Eye className={`w-4 h-4 ${darkMode ? 'text-purple-400' : 'text-purple-600'}`} />
             </div>
-            <p className="text-sm font-semibold text-gray-400">
+            <p className={`text-sm font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
               Interviews
             </p>
-            <p className="text-3xl font-black text-gray-200">
+            <p className={`text-3xl font-black ${darkMode ? 'text-gray-200' : 'text-gray-900'}`}>
               {statusCounts.interview || 0}
             </p>
           </div>          <div className="rounded-2xl p-5 bg-gradient-to-br from-blue-500 to-purple-600 dark:from-blue-600 dark:to-indigo-700 shadow-lg text-white">
@@ -326,44 +400,60 @@ export default function Applications() {
         </div>
 
         {/* Search and Filters */}
-        <div className="rounded-2xl p-6 mb-8 bg-gray-800/80 shadow-lg border border-gray-700/50">
+        <div className={`rounded-2xl p-6 mb-8 shadow-lg border ${
+          darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-100'
+        }`}>
           <div className="flex gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className={`absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 ${
+                darkMode ? 'text-gray-400' : 'text-gray-500'
+              }`} />
               <input
                 type="text"
                 placeholder="Search applications..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 rounded-xl outline-none transition-all font-medium bg-gray-900/50 border border-gray-700 text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:bg-gray-900/80"
+                className={`w-full pl-12 pr-4 py-4 rounded-xl outline-none transition-all font-medium ${
+                  darkMode
+                    ? 'bg-gray-900/50 border border-gray-700 text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:bg-gray-900/80'
+                    : 'bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:bg-white'
+                }`}
               />
             </div>
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-4 rounded-xl outline-none transition-all font-medium bg-gray-900/50 border border-gray-700 text-gray-100 focus:border-blue-500 focus:bg-gray-900/80"
+              className={`px-4 py-4 rounded-xl outline-none transition-all font-medium ${
+                darkMode
+                  ? 'bg-gray-900/50 border border-gray-700 text-gray-100 focus:border-blue-500 focus:bg-gray-900/80'
+                  : 'bg-gray-50 border border-gray-200 text-gray-900 focus:border-indigo-500 focus:bg-white'
+              }`}
             >
-              <option value="all" className="bg-gray-900">All Status</option>
-              <option value="pending" className="bg-gray-900">Application Sent</option>
-              <option value="reviewed" className="bg-gray-900">Under Review</option>
-              <option value="interview" className="bg-gray-900">Interview</option>
-              <option value="accepted" className="bg-gray-900">Offer Received</option>
-              <option value="rejected" className="bg-gray-900">Not Selected</option>
+              <option value="all">All Status</option>
+              <option value="pending">Application Sent</option>
+              <option value="reviewed">Under Review</option>
+              <option value="interview">Interview</option>
+              <option value="accepted">Offer Received</option>
+              <option value="rejected">Not Selected</option>
             </select>
           </div>
         </div>
 
         {/* Applications List */}
         {filteredApplications.length === 0 ? (
-          <div className="rounded-3xl shadow-xl p-12 text-center bg-gray-800/80 border border-gray-700/50">
-            <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 bg-gray-900/50">
-              <FileText className="w-12 h-12 text-gray-400" />
+          <div className={`rounded-3xl shadow-xl p-12 text-center border ${
+            darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-100'
+          }`}>
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              darkMode ? 'bg-gray-900/50' : 'bg-gray-100'
+            }`}>
+              <FileText className={`w-12 h-12 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`} />
             </div>
-            <h3 className="text-2xl font-black mb-2 text-gray-100">
+            <h3 className={`text-2xl font-black mb-2 ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>
               {applications.length === 0 ? 'No Applications Yet' : 'No Applications Found'}
             </h3>
-            <p className="text-gray-400">
+            <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>
               {applications.length === 0 
                 ? 'Start applying to jobs to track your applications here' 
                 : 'Try adjusting your search or filters'
@@ -382,14 +472,14 @@ export default function Applications() {
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-start gap-4 flex-1">
                       <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white font-bold text-lg shadow-lg bg-gradient-to-br from-blue-500 to-purple-600 dark:from-blue-500 dark:to-indigo-600">
-                        {application.job?.company.name.substring(0, 2)}
+                        {getCompanyName(application).substring(0, 2)}
                       </div>
                       <div className="flex-1">
                         <h3 className="text-lg font-black transition-colors mb-1 text-gray-900 group-hover:text-blue-600 dark:text-gray-100 dark:group-hover:text-blue-400">
-                          {application.job?.title}
+                          {getJobTitle(application)}
                         </h3>
                         <p className="font-medium mb-2 text-gray-600 dark:text-gray-400">
-                          {application.job?.company.name}
+                          {getCompanyName(application)}
                         </p>
                         <div className="flex items-center gap-4 text-sm text-gray-500">
                           <span className="flex items-center gap-1.5">
