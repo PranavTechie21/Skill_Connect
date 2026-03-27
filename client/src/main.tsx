@@ -12,7 +12,7 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <ThemeProvider defaultTheme="system" storageKey="skillconnect-theme">
         <AuthProvider>
           <LanguageProvider>
             <App />

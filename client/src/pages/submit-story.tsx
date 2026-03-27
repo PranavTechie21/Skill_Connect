@@ -41,7 +41,10 @@ export default function SubmitStory() {
     },
   });
 
-  // The form is public. Pre-fill name and email if a user is logged in for convenience.
+  // Ensure page starts at the top
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, []);
   useEffect(() => {
     if (user) {
       form.reset({
