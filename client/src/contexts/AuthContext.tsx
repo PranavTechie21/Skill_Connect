@@ -270,9 +270,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const updateUser = async (userData: Partial<User>): Promise<User> => {
+    // If it's a local-only state update (profile provided from already-saved server call)
+    if (userData.profile && Object.keys(userData).length === 1) {
+      setUserState(prev => prev ? ({ ...prev, profile: userData.profile as any }) : null);
+      return { profile: userData.profile } as any;
+    }
+
     setIsLoading(true);
     try {
-      const res = await apiFetch("/api/users/profile", {
+      // Use the consolidated profile update endpoint
+      const res = await apiFetch("/api/me/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(userData),
@@ -283,13 +290,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error("Failed to update user profile");
       }
 
-      const updatedUser = await res.json();
-      setUserState(prevUser => ({
+      const { profile } = await res.json();
+      setUserState(prevUser => prevUser ? ({
         ...prevUser,
-        ...updatedUser
-      }));
+        profile: profile || prevUser.profile
+      }) : null);
       
-      return updatedUser;
+      return { profile } as any;
     } finally {
       setIsLoading(false);
     }

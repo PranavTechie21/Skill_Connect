@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { Globe, Search, Check, ChevronDown, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const LANG_STORAGE_KEY = "skillconnect_google_lang";
+
 // Popular languages with native names and flag emojis
 const LANGUAGES = [
   { code: "en", name: "English", native: "English", flag: "🇬🇧" },
@@ -38,8 +40,21 @@ const LANGUAGES = [
   { code: "sv", name: "Swedish", native: "Svenska", flag: "🇸🇪" },
 ];
 
+async function applyLanguageToSelect(langCode: string, retries = 16): Promise<boolean> {
+  for (let attempt = 0; attempt < retries; attempt += 1) {
+    const select = document.querySelector<HTMLSelectElement>("#google_translate_element_hidden select");
+    if (select) {
+      select.value = langCode;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 120));
+  }
+  return false;
+}
+
 // Trigger Google Translate to switch language
-function doTranslate(langCode: string) {
+async function doTranslate(langCode: string) {
   // Google Translate injects UI artifacts (banner/options/x) into the DOM.
   // We immediately remove them to avoid user irritation after each translate.
   const removeGoogleTranslateArtifacts = () => {
@@ -49,7 +64,6 @@ function doTranslate(langCode: string) {
 
       const selectors = [
         "#goog-gt-tt", // "Translated into ..." bar + Options
-        ".goog-te-banner-frame",
         ".goog-te-balloon-frame",
         ".goog-te-menu-frame",
         ".goog-te-menu2",
@@ -59,20 +73,18 @@ function doTranslate(langCode: string) {
         document.querySelectorAll<HTMLElement>(sel).forEach((el) => el.remove());
       }
 
-      // Extra safety for other translate containers with predictable ids.
-      document
-        .querySelectorAll<HTMLElement>('[id^="goog-gt-"]')
-        .forEach((el) => el.remove());
     } catch {
       // Best-effort cleanup only.
     }
   };
 
   if (langCode === "en") {
-    // Reset to English by clearing the cookie and reloading
+    // Reset to English by clearing cookie and applying on hidden select (no reload)
     document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
     document.cookie = "googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=" + window.location.hostname;
-    window.location.reload();
+    localStorage.setItem(LANG_STORAGE_KEY, "en");
+    await applyLanguageToSelect("en");
+    removeGoogleTranslateArtifacts();
     return;
   }
 
@@ -80,12 +92,11 @@ function doTranslate(langCode: string) {
   const cookieVal = `/en/${langCode}`;
   document.cookie = `googtrans=${cookieVal}; path=/`;
   document.cookie = `googtrans=${cookieVal}; path=/; domain=${window.location.hostname}`;
+  localStorage.setItem(LANG_STORAGE_KEY, langCode);
 
-  // Try to trigger via the hidden select element first
-  const select = document.querySelector<HTMLSelectElement>("#google_translate_element select");
-  if (select) {
-    select.value = langCode;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
+  // Apply via hidden select element with retries.
+  const applied = await applyLanguageToSelect(langCode);
+  if (applied) {
     // Cleanup after Google has a chance to inject its banner.
     removeGoogleTranslateArtifacts();
     // Run repeatedly because Google may inject/refresh the banner after a delay.
@@ -95,9 +106,8 @@ function doTranslate(langCode: string) {
     return;
   }
 
-  // Fallback: reload to apply cookie
+  // Fallback: keep cookie and cleanup (avoid forced reload to preserve navigation context).
   removeGoogleTranslateArtifacts();
-  window.location.reload();
 }
 
 // Get current language from cookie
@@ -116,7 +126,8 @@ export function LanguageSwitcher() {
 
   // Load hidden Google Translate widget
   useEffect(() => {
-    setCurrentLang(getCurrentLang());
+    const persisted = localStorage.getItem(LANG_STORAGE_KEY);
+    setCurrentLang(persisted || getCurrentLang());
 
     if (isLoaded.current) return;
 
@@ -134,7 +145,6 @@ export function LanguageSwitcher() {
 
         const selectors = [
           "#goog-gt-tt",
-          ".goog-te-banner-frame",
           ".goog-te-balloon-frame",
           ".goog-te-menu-frame",
           ".goog-te-menu2",
@@ -144,9 +154,6 @@ export function LanguageSwitcher() {
           document.querySelectorAll<HTMLElement>(sel).forEach((el) => el.remove());
         }
 
-        document
-          .querySelectorAll<HTMLElement>('[id^="goog-gt-"]')
-          .forEach((el) => el.remove());
       } catch {
         // Best-effort cleanup only.
       }
@@ -176,6 +183,14 @@ export function LanguageSwitcher() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const persisted = localStorage.getItem(LANG_STORAGE_KEY);
+    const targetLang = persisted || getCurrentLang();
+    if (targetLang && targetLang !== "en") {
+      void doTranslate(targetLang);
+    }
+  }, []);
+
   // Close on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -197,7 +212,7 @@ export function LanguageSwitcher() {
     setCurrentLang(langCode);
     setOpen(false);
     setSearch("");
-    doTranslate(langCode);
+    void doTranslate(langCode);
   }, []);
 
   const filtered = LANGUAGES.filter(

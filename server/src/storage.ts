@@ -1,4 +1,4 @@
-﻿import { type User, type InsertUser, type Company, type InsertCompany, type Job, type InsertJob, type Application, type InsertApplication, type Message, type InsertMessage, type Experience, type InsertExperience, type Story, type ProfessionalProfile, type InsertProfessionalProfile } from "../../shared/schema";
+import { type User, type InsertUser, type Company, type InsertCompany, type Job, type InsertJob, type Application, type InsertApplication, type Message, type InsertMessage, type Experience, type InsertExperience, type Story, type ProfessionalProfile, type InsertProfessionalProfile } from "../../shared/schema";
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
@@ -66,21 +66,46 @@ export class Storage {
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
     try {
-      const setFields = [];
-      const values = [];
+      const setClauses: any[] = [];
 
-      for (const [key, value] of Object.entries(updates)) {
-        if (value !== undefined) {
-          setFields.push(`${key} = ${sql.raw('?')}`);
-          values.push(value instanceof Date ? value.toISOString() : String(value));
-        }
+      if (updates.email !== undefined) setClauses.push(sql`email = ${updates.email}`);
+      if (updates.password !== undefined) setClauses.push(sql`password = ${updates.password}`);
+      if (updates.firstName !== undefined) setClauses.push(sql`first_name = ${updates.firstName}`);
+      if (updates.lastName !== undefined) setClauses.push(sql`last_name = ${updates.lastName}`);
+      if (updates.userType !== undefined) setClauses.push(sql`user_type = ${updates.userType}`);
+      if (updates.location !== undefined) setClauses.push(sql`location = ${updates.location}`);
+      if (updates.profilePhoto !== undefined) setClauses.push(sql`profile_photo = ${updates.profilePhoto}`);
+      if (updates.telephoneNumber !== undefined) setClauses.push(sql`telephone_number = ${updates.telephoneNumber}`);
+
+      if (setClauses.length === 0) {
+        throw new Error("No valid fields to update");
       }
 
       const result = await db.execute(
-        sql`UPDATE users SET ${sql.raw(setFields.join(', '))} WHERE id = ${id} RETURNING *`);
+        sql`UPDATE users SET ${sql.join(setClauses, sql`, `)} WHERE id = ${id} RETURNING *`
+      );
+
+      if (!result.rows[0]) {
+        throw new Error("User not found");
+      }
       return result.rows[0] as User;
     } catch (error) {
       console.error('Error in updateUser:', error);
+      throw error;
+    }
+  }
+
+  async updateUserProfilePhoto(id: string, profilePhoto: string | null): Promise<User> {
+    try {
+      const result = await db.execute(
+        sql`UPDATE users SET profile_photo = ${profilePhoto} WHERE id = ${id} RETURNING *`
+      );
+      if (!result.rows[0]) {
+        throw new Error("User not found");
+      }
+      return result.rows[0] as User;
+    } catch (error) {
+      console.error("Error in updateUserProfilePhoto:", error);
       throw error;
     }
   }
@@ -304,6 +329,15 @@ export class Storage {
 
 
 
+  async deleteJob(id: string): Promise<void> {
+    try {
+      await db.execute(sql`DELETE FROM jobs WHERE id = ${id}`);
+    } catch (error) {
+      console.error('Error in deleteJob:', error);
+      throw error;
+    }
+  }
+
   async getCompany(id: string) {
     try {
       const result = await db.execute(
@@ -443,7 +477,7 @@ export class Storage {
           ${profile.userId},
           ${profile.headline || null},
           ${profile.bio || null},
-          ${sql.raw(`'${JSON.stringify(profile.skills || [])}'::jsonb`)}
+          ${JSON.stringify(profile.skills || [])}::jsonb
         ) RETURNING *
       `);
       return result.rows[0] as ProfessionalProfile;
@@ -474,9 +508,9 @@ export class Storage {
       const query = sql`
         UPDATE professional_profiles 
         SET 
-          headline = COALESCE(${updates.headline}, headline),
-          bio = COALESCE(${updates.bio}, bio),
-          skills = COALESCE(${updates.skills ? sql.raw(`'${JSON.stringify(updates.skills)}'::jsonb`) : sql`skills`}, '[]'::jsonb)
+          headline = COALESCE(${updates.headline ?? null}, headline),
+          bio = COALESCE(${updates.bio ?? null}, bio),
+          skills = COALESCE(${updates.skills ? JSON.stringify(updates.skills) : null}::jsonb, skills)
         WHERE user_id = ${userId}
         RETURNING *
       `;
@@ -484,7 +518,13 @@ export class Storage {
       const result = await db.execute(query);
 
       if (!result.rows[0]) {
-        throw new Error('Profile not found or update failed');
+        // Profile row may not exist yet for older users; create it instead of failing.
+        return await this.createProfessionalProfile({
+          userId,
+          headline: updates.headline || null,
+          bio: updates.bio || null,
+          skills: Array.isArray(updates.skills) ? updates.skills : [],
+        });
       }
 
       return result.rows[0] as ProfessionalProfile;

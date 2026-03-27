@@ -8,10 +8,12 @@ import session from "express-session";
 import cors from "cors";
 import bcrypt from "bcrypt";
 import { z } from "zod";
+import { sql } from "drizzle-orm";
 import fs from 'fs';
 import path from 'path';
 import multer from 'multer';
-import { applications } from './schema';
+// Remove import { applications } from './schema'; removed as we use shared schema
+
 import { db, pool } from './db';
 import { storage } from "./storage";
 import connectPgSimple from 'connect-pg-simple';
@@ -26,8 +28,11 @@ import {
   type InsertProfessionalProfile,
   type UpdateProfile,
   professionalProfiles,
-  companies
+  companies,
+  applications
 } from "../../shared/schema";
+
+
 import { handleError } from "./utils";
 
 declare module 'express-session' {
@@ -312,17 +317,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const upload = multer({
         storage: multerStorage,
     fileFilter: (req, file, cb) => {
-      const allowedMimes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (allowedMimes.includes(file.mimetype)) {
+      const ext = path.extname(file.originalname || "").toLowerCase();
+      const allowedExts = [".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png", ".webp"];
+      const allowedMimes = [
+        'application/pdf', 
+        'application/msword', 
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/webp',
+        'application/octet-stream'
+      ];
+      const mimeAllowed = allowedMimes.includes(file.mimetype);
+      const extAllowed = allowedExts.includes(ext);
+      if (mimeAllowed && (file.mimetype !== 'application/octet-stream' || extAllowed)) {
+        cb(null, true);
+      } else if (file.mimetype === 'application/octet-stream' && extAllowed) {
+        // Some browsers/uploaders send generic MIME; trust safe extensions.
         cb(null, true);
       } else {
-        cb(new Error('Invalid file type. Only PDF and Word documents are allowed.'));
+        cb(new Error('Invalid file type. Only PDF, Word documents, and images (JPG, PNG, WEBP) are allowed.'));
       }
     },
+
     limits: {
       fileSize: 10 * 1024 * 1024, // 10MB limit
     },
   });  // Check if email exists route
+
+  const uploadImage = multer({
+    storage: multerStorage,
+    fileFilter: (req, file, cb) => {
+      const allowed = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Invalid image type. Only JPG, PNG and WEBP are allowed."));
+      }
+    },
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB image limit
+    },
+  });
+
   app.post("/api/auth/check-email", async (req, res) => {
     try {
       console.log('Checking email:', req.body);
@@ -914,25 +951,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cookieHeader: req.headers.cookie?.substring(0, 100)
       });
       
-      if (!req.session.userId) {
+      const userId = req.session.userId;
+      if (!userId) {
         console.error('❌ No userId in session even though requireAuth passed!');
         return res.status(401).json({ message: "Not authenticated" });
       }
       
-      const user = await storage.getUser(req.session.userId);
+      const user = await storage.getUser(userId);
       if (!user) {
-        console.warn('⚠️ User not found for userId:', req.session.userId);
-        return res.status(401).json({ message: "User not found" }); // Changed from 404 to 401
+        console.warn('⚠️ User not found for userId:', userId);
+        return res.status(401).json({ message: "User not found" });
       }
       
-      console.log('✅ User found:', { id: user.id, email: user.email, userType: user.userType });
+      // Normalize userType for comparison
+      const userTypeRaw = (user as any).userType || (user as any).user_type || "";
+      const normalizedType = userTypeRaw.toString().toLowerCase();
+      
+      console.log('✅ User found:', { id: user.id, email: user.email, userType: userTypeRaw, normalizedType });
 
       let profile = null;
       let company = null;
       
-      if (user.userType === 'Professional' || user.userType === 'job_seeker') {
+      // Professional or job seeker check
+      if (!normalizedType || normalizedType === 'professional' || normalizedType === 'job_seeker' || normalizedType === 'job-seeker') {
         profile = await storage.getProfessionalProfileByUserId(user.id);
-      } else if (user.userType === 'Employer') {
+      } else if (normalizedType === 'employer' || normalizedType === 'company_owner') {
         // Get company information for employers
         const companies = await storage.getCompaniesByOwner(user.id);
         company = companies.length > 0 ? companies[0] : null;
@@ -958,24 +1001,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update current user profile
   authRouter.put("/me/profile", requireAuth, async (req, res) => {
     try {
-        const user = await storage.getUser(req.session.userId);
+        const userId = req.session.userId;
+        const user = await storage.getUser(userId);
         if (!user) {
             return res.status(404).json({ message: "User not found" });
         }
 
+        // Handle both snake_case and camelCase, and normalize for comparison
+        const userTypeRaw = (user as any).userType || (user as any).user_type || "";
+        const normalizedType = userTypeRaw.toString().toLowerCase();
+        
+        console.log('🔄 Profile Update Attempt:', {
+            userId,
+            userTypeRaw,
+            normalizedType,
+            bodyKeys: Object.keys(req.body)
+        });
+
         let updatedProfile;
-        if (user.userType === 'Professional' || user.userType === 'job_seeker') {
+        // Accept 'professional', 'Professional', 'job_seeker', 'job-seeker'
+        if (!normalizedType || normalizedType === 'professional' || normalizedType === 'job_seeker' || normalizedType === 'job-seeker') {
             // Validate profile updates using schema
             const profileUpdates = updateProfileSchema.parse(req.body);
             updatedProfile = await storage.updateProfessionalProfile(user.id, profileUpdates);
         } else {
-            return res.status(400).json({ message: "User does not have an updatable profile" });
+            console.warn('❌ Profile Update Rejected: Unsuitable userType', { userId, normalizedType });
+            return res.status(400).json({ 
+                message: "User does not have an updatable professional profile",
+                userType: userTypeRaw
+            });
         }
 
         res.json({ profile: updatedProfile });
 
     } catch (error) {
+        console.error('❌ Profile Update Error:', error);
         handleError(res, error, "Failed to update profile");
+    }
+  });
+
+  // Upload current user's profile photo
+  authRouter.post("/me/profile-photo", requireAuth, (req, res) => {
+    uploadImage.single("photo")(req, res, async (err: any) => {
+      if (err) {
+        return res.status(400).json({ message: err.message || "Invalid upload" });
+      }
+      try {
+        const userId = req.session.userId;
+        if (!userId) {
+          return res.status(401).json({ message: "Not authenticated" });
+        }
+        if (!req.file) {
+          return res.status(400).json({ message: "No image file uploaded" });
+        }
+
+        const photoUrl = `/uploads/${req.file.filename}`;
+        const updatedUser = await storage.updateUserProfilePhoto(userId, photoUrl);
+        return res.json({ user: sanitizeUser(updatedUser), profilePhoto: photoUrl });
+      } catch (error) {
+        handleError(res, error, "Failed to upload profile photo");
+      }
+    });
+  });
+
+  // Remove current user's profile photo
+  authRouter.delete("/me/profile-photo", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Best effort cleanup for locally uploaded files.
+      if (user.profilePhoto?.startsWith("/uploads/")) {
+        const fileName = path.basename(user.profilePhoto);
+        const filePath = path.join(process.cwd(), "uploads", fileName);
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+        }
+      }
+
+      const updatedUser = await storage.updateUserProfilePhoto(userId, null);
+      return res.json({ user: sanitizeUser(updatedUser), profilePhoto: null });
+    } catch (error) {
+      handleError(res, error, "Failed to remove profile photo");
     }
   });
 
@@ -1369,59 +1483,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount the applications routes with auth
   const applicationRoutes = Router();
-  applicationRoutes.post("/quick-apply", upload.array('attachments', 5), async (req, res) => {
-    try {
-      const userId = req.session.userId;
-      
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
+  applicationRoutes.post("/quick-apply", (req, res) => {
+    upload.array('attachments', 5)(req, res, async (uploadErr: any) => {
+      if (uploadErr) {
+        const message = uploadErr?.message || 'Invalid attachment upload';
+        return res.status(400).json({
+          error: 'Attachment validation failed',
+          message,
+        });
       }
+      try {
+        const userId = req.session.userId;
 
-      const { jobId, coverLetter } = req.body;
+        if (!userId) {
+          return res.status(401).json({ error: 'Authentication required' });
+        }
 
-      // Get uploaded file details
-      const attachments = (req.files as Express.Multer.File[])?.map(file => ({
-        filename: file.filename,
-        originalName: file.originalname,
-        path: file.path,
-        size: file.size,
-        mimeType: file.mimetype
-      })) || [];
+        const { jobId, coverLetter } = req.body;
+        if (!jobId) {
+          return res.status(400).json({ error: 'jobId is required' });
+        }
 
-      // Create application record
-      const [application] = await db
-        .insert(applications)
-        .values({
-          userId: parseInt(userId),
-          jobId: parseInt(jobId),
-          coverLetter,
-          attachments,
-          status: 'review'
-        })
-        .returning();
+        // Get uploaded file details
+        const attachments = (req.files as Express.Multer.File[])?.map(file => ({
+          filename: file.filename,
+          originalName: file.originalname,
+          path: file.path,
+          size: file.size,
+          mimeType: file.mimetype
+        })) || [];
 
-      res.status(201).json(application);
-    } catch (error) {
-      console.error('Error creating application:', error);
-      
-      // Clean up any uploaded files if there was an error
-      if (req.files) {
-        const files = Array.isArray(req.files) ? req.files : Object.values(req.files);
-        await Promise.all(
-          files.map(file => {
-            const f = file as Express.Multer.File;
-            return fs.promises.unlink(f.path).catch(err => 
-              console.error(`Failed to delete file ${f.path}:`, err)
-            );
+        // Create application record using shared schema mapping
+        const [application] = await db
+          .insert(applications)
+          .values({
+            applicantId: userId, // userId is a string in shared schema
+            jobId: jobId,       // jobId is a string in shared schema
+            coverLetter,
+            resume: attachments.length > 0 ? JSON.stringify(attachments) : null,
+            status: 'review'
           })
-        );
-      }
+          .returning();
 
-      res.status(500).json({ 
-        error: 'Failed to submit application',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
-    }
+        res.status(201).json(application);
+      } catch (error) {
+        console.error('Error creating application:', error);
+
+        // Clean up any uploaded files if there was an error
+        if (req.files) {
+          const files = Array.isArray(req.files) ? req.files : Object.values(req.files);
+          await Promise.all(
+            files.map(file => {
+              const f = file as Express.Multer.File;
+              return fs.promises.unlink(f.path).catch(err =>
+                console.error(`Failed to delete file ${f.path}:`, err)
+              );
+            })
+          );
+        }
+
+        res.status(500).json({
+          error: 'Failed to submit application',
+          message: error instanceof Error ? error.message : 'Unknown error occurred'
+        });
+      }
+    });
   });
 
   // Mount the authenticated router

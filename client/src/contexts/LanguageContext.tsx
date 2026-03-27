@@ -6,6 +6,7 @@ import {
   useEffect,
   ReactNode,
 } from "react";
+import { overwrite } from "zod";
 const DEFAULT_LOCALE = "en";const STORAGE_KEY = "skillconnect_locale";
 
 interface LanguageContextType {
@@ -144,7 +145,7 @@ const FALLBACK_MESSAGES: Record<string, unknown> = {
   stories: {
     title: "Our Success Stories",
     heroLine:
-      "Real experiences from people who found success through our platform.",
+      "Real experiences.",
   },
   employee: {
     browseJobs: {
