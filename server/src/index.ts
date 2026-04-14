@@ -3,6 +3,7 @@ import cors from "cors";
 import http from "http";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "../vite";
 
@@ -77,6 +78,13 @@ const server = http.createServer(app);
     });
     
     app.use(express.json());
+
+    // Serve uploaded assets (e.g. profile photos)
+    const uploadsPath = path.join(process.cwd(), "uploads");
+    if (!fs.existsSync(uploadsPath)) {
+      fs.mkdirSync(uploadsPath, { recursive: true });
+    }
+    app.use("/uploads", express.static(uploadsPath));
 
     // Register all API routes before the Vite/static middleware
     await registerRoutes(app);

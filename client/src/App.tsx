@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { useAuth } from "./contexts/AuthContext";
 import { SavedJobsProvider } from "./contexts/SavedJobsContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { ThemeProvider } from "./components/theme-provider";
@@ -8,6 +9,7 @@ import Navbar from "./components/navbar";
 import EmployeeLayout from "./components/layouts/EmployeeLayout";
 import EmployerLayout from "./components/layouts/employer-layout";
 import { SkillConnectAssistant } from "./components/skillconnect-assistant";
+import { normalizeUserType } from "./lib/utils";
 
 
 // Public Pages
@@ -109,14 +111,40 @@ const ROUTES = {
   }
 } as const;
 
+function JobsRouteGate() {
+  const { user } = useAuth();
+
+  if (!user) return <Jobs />;
+
+  const normalized = normalizeUserType((user as any)?.userType ?? (user as any)?.user_type);
+  if (normalized === "professional") return <Navigate to={ROUTES.EMPLOYEE.JOBS} replace />;
+  if (normalized === "employer") return <Navigate to={ROUTES.EMPLOYER.DASHBOARD} replace />;
+  if (normalized === "admin") return <Navigate to="/admin" replace />;
+
+  return <Jobs />;
+}
+
+function HomeRouteGate() {
+  const { user } = useAuth();
+
+  if (!user) return <Home />;
+
+  const normalized = normalizeUserType((user as any)?.userType ?? (user as any)?.user_type);
+  if (normalized === "professional") return <Navigate to={ROUTES.EMPLOYEE.DASHBOARD} replace />;
+  if (normalized === "employer") return <Navigate to={ROUTES.EMPLOYER.DASHBOARD} replace />;
+  if (normalized === "admin") return <Navigate to="/admin" replace />;
+
+  return <Home />;
+}
+
 // Route protection configuration
 const routeConfig = {
   public: [
-    { path: ROUTES.PUBLIC.HOME, element: <Home /> },
+    { path: ROUTES.PUBLIC.HOME, element: <HomeRouteGate /> },
     { path: ROUTES.PUBLIC.PROFILE, element: <ProfileRedirect /> },
     { path: ROUTES.PUBLIC.STORIES, element: <OurStories /> },
     { path: ROUTES.PUBLIC.PROFESSIONALS, element: <ProfessionalsPage /> },
-    { path: ROUTES.PUBLIC.JOBS, element: <Jobs /> },
+    { path: ROUTES.PUBLIC.JOBS, element: <JobsRouteGate /> },
     { path: ROUTES.PUBLIC.ABOUT, element: <About /> },
     { path: ROUTES.PUBLIC.LOGIN, element: <Login /> },
     { path: ROUTES.PUBLIC.SIGNUP, element: <Signup /> },

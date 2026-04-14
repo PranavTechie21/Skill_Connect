@@ -63,7 +63,7 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Navigation & User Actions */}
-          <div className="hidden md:flex items-center gap-2">
+          <div className="hidden md:flex items-center gap-1 ml-auto">
             <NavItem to="/" isActive={isActive("/")}>
               {t("nav.home")}
             </NavItem>

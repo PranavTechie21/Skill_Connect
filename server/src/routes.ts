@@ -275,10 +275,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         let profile = null;
         let company = null;
-        
-        if (user.userType === 'Professional' || user.userType === 'job_seeker') {
+        const rawUserType = ((user as any).userType || (user as any).user_type || "").toString().toLowerCase();
+
+        // Keep this early route aligned with the main auth route to avoid profile-loss UI mismatches.
+        if (!rawUserType || rawUserType === 'professional' || rawUserType === 'job_seeker' || rawUserType === 'job-seeker') {
           profile = await storage.getProfessionalProfileByUserId(user.id);
-        } else if (user.userType === 'Employer') {
+        } else if (rawUserType === 'employer' || rawUserType === 'company_owner') {
           const companies = await storage.getCompaniesByOwner(user.id);
           company = companies.length > 0 ? companies[0] : null;
         }
@@ -1278,15 +1280,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const enrichedApplications = await Promise.all(
         applications.map(async (app) => {
+          const normalizedJobId = app.jobId ?? app.job_id;
+          const normalizedApplicantId = app.applicantId ?? app.applicant_id;
+
           const [job, applicant] = await Promise.all([
-            app.jobId ? storage.getJob(app.jobId) : null,
-            app.applicantId ? storage.getUser(app.applicantId) : null,
+            normalizedJobId ? storage.getJob(String(normalizedJobId)) : null,
+            normalizedApplicantId ? storage.getUser(String(normalizedApplicantId)) : null,
           ]);
           
           const company = job?.companyId ? await storage.getCompany(String(job.companyId)) : null;
           
           return {
             ...app,
+            jobId: normalizedJobId,
+            applicantId: normalizedApplicantId,
+            appliedAt: app.appliedAt ?? app.applied_at,
+            updatedAt: app.updatedAt ?? app.updated_at,
             job: job ? job : null,
             applicant: applicant ? sanitizeUser(applicant) : null,
             company: company ? company : null,
