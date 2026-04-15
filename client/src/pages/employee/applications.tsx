@@ -38,7 +38,11 @@ interface Application {
   interviewDate?: string;
 }
 
-export default function Applications() {
+interface ApplicationsProps {
+  embedded?: boolean;
+}
+
+export default function Applications({ embedded = false }: ApplicationsProps) {
   const { user } = useAuth();
   const { theme } = useTheme();
   const darkMode = theme === 'dark';
@@ -227,16 +231,18 @@ export default function Applications() {
 
   if (error) {
     return (
-      <div className="min-h-screen transition-colors duration-300 bg-gray-50 dark:bg-gray-900">
+      <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} transition-colors duration-300 bg-gray-50 dark:bg-gray-900`}>
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => window.history.back()}
-                className="p-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <ArrowLeft className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-              </button>
+              {!embedded && (
+                <button
+                  onClick={() => window.history.back()}
+                  className="p-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <ArrowLeft className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                </button>
+              )}
               <div>
                 <h1 className="text-3xl font-black text-gray-900 dark:text-white">
                   My Applications
@@ -273,16 +279,18 @@ export default function Applications() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen transition-colors duration-300 bg-gray-50 dark:bg-gray-900">
+      <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} transition-colors duration-300 bg-gray-50 dark:bg-gray-900`}>
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => window.history.back()}
-                className="p-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-700"
-              >
-                <ArrowLeft className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-              </button>
+              {!embedded && (
+                <button
+                  onClick={() => window.history.back()}
+                  className="p-2 rounded-xl transition-all hover:bg-gray-100 dark:hover:bg-gray-700"
+                >
+                  <ArrowLeft className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+                </button>
+              )}
               <div>
                 <h1 className="text-3xl font-black text-gray-900 dark:text-white">
                   My Applications
@@ -307,21 +315,23 @@ export default function Applications() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
+    <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} transition-colors duration-300 ${
       darkMode ? 'bg-[#0f172a]' : 'bg-gray-50'
     }`}>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.history.back()}
-              className={`p-2 rounded-xl transition-all ${
-                darkMode ? 'hover:bg-gray-800/50' : 'hover:bg-gray-100'
-              }`}
-            >
-              <ArrowLeft className={`w-6 h-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-            </button>
+            {!embedded && (
+              <button
+                onClick={() => window.history.back()}
+                className={`p-2 rounded-xl transition-all ${
+                  darkMode ? 'hover:bg-gray-800/50' : 'hover:bg-gray-100'
+                }`}
+              >
+                <ArrowLeft className={`w-6 h-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+              </button>
+            )}
             <div>
               <h1 className={`text-3xl font-black ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>
                 My Applications

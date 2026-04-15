@@ -57,7 +57,11 @@ interface SmartSuggestion {
   detail: string;
 }
 
-const Profile = () => {
+interface ProfileProps {
+  embedded?: boolean;
+}
+
+const Profile = ({ embedded = false }: ProfileProps) => {
   const { theme } = useTheme();
   const { user, setUser } = useAuth();
   const { toast } = useToast();
@@ -537,7 +541,7 @@ const Profile = () => {
   );
 
   return (
-    <div className={`min-h-screen w-screen fixed inset-0 transition-colors duration-300 overflow-y-auto ${
+    <div className={`${embedded ? 'min-h-full' : 'min-h-screen w-screen fixed inset-0'} transition-colors duration-300 overflow-y-auto ${
       darkMode 
         ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
         : 'bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50'
@@ -552,22 +556,24 @@ const Profile = () => {
         } animate-pulse delay-1000`} />
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8 relative z-10">
+      <div className={`max-w-7xl mx-auto relative z-10 ${embedded ? 'px-2 py-3' : 'px-6 py-8'}`}>
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.history.back()}
-              className={`p-3 rounded-2xl transition-all duration-300 hover:scale-105 ${
-                darkMode
-                  ? 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white shadow-lg'
-                  : 'bg-white hover:bg-gray-100 text-gray-600 hover:text-gray-900 shadow-lg'
-              }`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </button>
+            {!embedded && (
+              <button
+                onClick={() => window.history.back()}
+                className={`p-3 rounded-2xl transition-all duration-300 hover:scale-105 ${
+                  darkMode
+                    ? 'bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-white shadow-lg'
+                    : 'bg-white hover:bg-gray-100 text-gray-600 hover:text-gray-900 shadow-lg'
+                }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+              </button>
+            )}
             <div>
               <h1 className={`text-4xl font-black mb-2 bg-gradient-to-r ${
                 darkMode 

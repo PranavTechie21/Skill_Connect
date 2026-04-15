@@ -1,20 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/components/theme-provider';
 import { useLanguage } from "@/contexts/LanguageContext";
 
-const ROUTES = {
-  EMPLOYEE: {
-    DASHBOARD: '/employee/dashboard',
-    MESSAGES: '/employee/messages',
-    JOBS: '/employee/jobs',
-    APPLICATIONS: '/employee/applications',
-    SAVED_JOBS: '/employee/saved-jobs',
-    PROFILE: '/employee/profile',
-    SETTINGS: '/employee/settings'
-  }
-};
 import {
   Search, MapPin, Bookmark, Bell, MessageSquare, User, FileText,
   TrendingUp, Clock, CheckCircle, XCircle, Briefcase, Filter,
@@ -23,6 +12,13 @@ import {
   Upload, Calendar, Building2
 } from 'lucide-react';
 import { QuickApplyModal } from '../../components/quick-apply-modal';
+import BrowseJobsPage from './browse-jobs';
+import ApplicationsPage from './applications';
+import SavedJobsPage from './saved-jobs';
+import MessagesPage from './messages';
+import ProfilePage from './profile';
+import StoriesPage from './story';
+import SettingsPage from './settings';
 
 import { apiFetch } from '@/lib/api';
 
@@ -106,6 +102,7 @@ const mockApplications: Application[] = [
 
 const EmployeeDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useAuth();
   const { theme, setTheme } = useTheme();
   const darkMode = theme === 'dark';
@@ -146,9 +143,20 @@ const EmployeeDashboard: React.FC = () => {
   const [showMessages, setShowMessages] = useState(false);
   const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
 
+  const switchToTab = (tabId: string) => {
+    setActiveTab(tabId);
+    const query = tabId === 'overview' ? '' : `?tab=${tabId}`;
+    navigate(`/employee/dashboard${query}`);
+  };
+
   useEffect(() => {
     fetchDashboardData();
   }, [user?.id]);
+
+  useEffect(() => {
+    const tab = new URLSearchParams(location.search).get('tab');
+    setActiveTab(tab ?? 'overview');
+  }, [location.search]);
 
   // Handle clicking outside to close dropdowns
   useEffect(() => {
@@ -366,28 +374,14 @@ const fetchDashboardData = async () => {
   };
 
   const NavItem = ({ icon: Icon, label, id, badge }: any) => {
-    // Map sidebar ids to employee routes
-    const routeMap: Record<string, string> = {
-      overview: '/employee/dashboard',
-      jobs: '/employee/jobs',
-      applications: '/employee/applications',
-      saved: '/employee/saved-jobs',
-      messages: '/employee/messages',
-      profile: '/employee/profile',
-      story: '/employee/story',
-      settings: '/employee/settings'
-    };
-    
     const handleNavClick = () => {
-      setActiveTab(id);
-      const to = routeMap[id] || '/employee/dashboard';
-      navigate(to);
+      switchToTab(id);
     };
 
     return (
       <button
         onClick={handleNavClick}
-        className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
+        className={`w-full flex items-center ${sidebarOpen ? 'justify-between px-4' : 'justify-center px-2'} py-3 rounded-xl transition-all group relative ${
           activeTab === id
             ? darkMode
               ? 'bg-blue-500/20 text-blue-400'
@@ -397,15 +391,31 @@ const fetchDashboardData = async () => {
             : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
         }`}
       >
-        <div className="flex items-center gap-3">
+        <div className={`flex items-center ${sidebarOpen ? 'gap-3' : 'gap-0'}`}>
           <Icon className="w-5 h-5" />
-          <span className="font-medium">{label}</span>
+          {sidebarOpen && <span className="font-medium">{label}</span>}
         </div>
-        {badge && (
+        {sidebarOpen && badge && (
           <span className={`px-2 py-1 rounded-full text-xs font-bold ${
             darkMode ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white'
           }`}>
             {badge}
+          </span>
+        )}
+        {!sidebarOpen && badge && (
+          <span className={`absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+            darkMode ? 'bg-blue-500 text-white' : 'bg-blue-600 text-white'
+          }`}>
+            {badge}
+          </span>
+        )}
+        {!sidebarOpen && (
+          <span className={`pointer-events-none absolute left-full ml-3 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200 z-50 border ${
+            darkMode
+              ? 'bg-gray-800 text-gray-100 border-gray-700 shadow-xl'
+              : 'bg-white text-gray-800 border-gray-200 shadow-lg'
+          }`}>
+            {label}
           </span>
         )}
       </button>
@@ -563,6 +573,10 @@ const fetchDashboardData = async () => {
     <div className={`min-h-screen w-screen transition-colors duration-300 fixed inset-0 ${
       darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-50'
     } overflow-x-hidden`}>
+  <div className="pointer-events-none absolute inset-0">
+    <div className={`${darkMode ? 'opacity-100' : 'opacity-70'} absolute inset-0 bg-[radial-gradient(1200px_500px_at_20%_-10%,rgba(59,130,246,0.16),transparent_60%),radial-gradient(1000px_450px_at_90%_0%,rgba(99,102,241,0.14),transparent_60%),linear-gradient(to_bottom,rgba(255,255,255,0.02),transparent)]`} />
+    <div className={`${darkMode ? 'opacity-80' : 'opacity-50'} absolute inset-0 bg-[radial-gradient(900px_360px_at_50%_120%,rgba(168,85,247,0.12),transparent_60%)]`} />
+  </div>
   {/* Top Navbar */}
   <nav className={`${darkMode ? 'bg-gray-800/95 border-gray-700' : 'bg-white/95 border-gray-200'} backdrop-blur-lg border-b fixed top-0 left-0 right-0 z-50`}>
         <div className="px-6 py-4">
@@ -771,7 +785,7 @@ const fetchDashboardData = async () => {
                                   m.id === message.id ? { ...m, read: true } : m
                                 );
                                 setMessages(updatedMessages);
-                                navigate('/employee/messages');
+                                switchToTab('messages');
                                 setShowMessages(false);
                               }
                             }}
@@ -808,7 +822,7 @@ const fetchDashboardData = async () => {
                       <button
                         onClick={() => {
                           setShowMessages(false); // Close the dropdown first
-                          navigate(ROUTES.EMPLOYEE.MESSAGES); // Navigate to messages page using route constant
+                          switchToTab('messages');
                         }}
                         className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
                           darkMode
@@ -850,7 +864,7 @@ const fetchDashboardData = async () => {
                     </p>
                   </div>
                   <button
-                    onClick={() => navigate('/employee/profile')}
+                    onClick={() => switchToTab('profile')}
                     className={`w-full px-4 py-2 text-left flex items-center gap-3 ${
                       darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'
                     }`}
@@ -859,7 +873,7 @@ const fetchDashboardData = async () => {
                     Profile
                   </button>
                   <button
-                    onClick={() => navigate('/employee/settings')}
+                    onClick={() => switchToTab('settings')}
                     className={`w-full px-4 py-2 text-left flex items-center gap-3 ${
                       darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'
                     }`}
@@ -884,12 +898,12 @@ const fetchDashboardData = async () => {
 
   <div className="flex mt-[4.5rem] relative">
         {/* Sidebar */}
-        <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} h-[calc(100vh-4rem)] sticky top-16 transition-all duration-300 overflow-hidden border-r ${
+        <aside className={`${sidebarOpen ? 'w-72' : 'w-20'} h-[calc(100vh-4rem)] sticky top-16 transition-all duration-300 overflow-hidden border-r ${
           darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
         }`}>
-          <div className="p-6 space-y-6 h-full overflow-y-auto">
+          <div className={`${sidebarOpen ? 'p-6' : 'px-2 py-4'} space-y-6 h-full overflow-y-auto`}>
             {/* Quick Stats */}
-            <div>
+            {sidebarOpen && <div>
               <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${
                 darkMode ? 'text-gray-400' : 'text-gray-500'
               }`}>
@@ -911,13 +925,13 @@ const fetchDashboardData = async () => {
                   <p className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Interviews</p>
                 </div>
               </div>
-            </div>
+            </div>}
 
             {/* Navigation */}
             <div>
               <h3 className={`text-xs font-semibold uppercase tracking-wider mb-3 ${
                 darkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}>
+              } ${sidebarOpen ? '' : 'text-center'}`}>
                 Navigation
               </h3>
               <div className="space-y-1">
@@ -933,7 +947,7 @@ const fetchDashboardData = async () => {
             </div>
 
             {/* Profile Completion Card */}
-            <div className={`p-4 rounded-xl ${
+            {sidebarOpen && <div className={`p-4 rounded-xl ${
               darkMode ? 'bg-gradient-to-br from-indigo-600 to-purple-600' : 'bg-gradient-to-br from-indigo-500 to-purple-600'
             } text-white`}>
               <div className="flex items-center gap-2 mb-3">
@@ -948,17 +962,46 @@ const fetchDashboardData = async () => {
                 ></div>
               </div>
               <button
-                onClick={() => navigate('/employee/profile')}
+                onClick={() => switchToTab('profile')}
                 className="w-full py-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-all font-medium text-sm"
               >
                 Complete Profile
               </button>
-            </div>
+            </div>}
           </div>
         </aside>
 
         {/* Main Content */}
         <main className="flex-1 px-6 py-6 overflow-y-auto min-h-[calc(100vh-4.5rem)]">
+          {activeTab === 'jobs' ? (
+            <div className="max-w-7xl mx-auto">
+              <BrowseJobsPage embedded />
+            </div>
+          ) : activeTab === 'applications' ? (
+            <div className="max-w-7xl mx-auto">
+              <ApplicationsPage embedded />
+            </div>
+          ) : activeTab === 'saved' ? (
+            <div className="max-w-7xl mx-auto">
+              <SavedJobsPage embedded />
+            </div>
+          ) : activeTab === 'messages' ? (
+            <div className="max-w-7xl mx-auto">
+              <MessagesPage embedded />
+            </div>
+          ) : activeTab === 'profile' ? (
+            <div className="max-w-7xl mx-auto">
+              <ProfilePage embedded />
+            </div>
+          ) : activeTab === 'story' ? (
+            <div className="max-w-7xl mx-auto">
+              <StoriesPage embedded />
+            </div>
+          ) : activeTab === 'settings' ? (
+            <div className="max-w-7xl mx-auto">
+              <SettingsPage embedded />
+            </div>
+          ) : (
           <div className="max-w-7xl mx-auto space-y-8">
             {/* Stats Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1133,7 +1176,7 @@ const fetchDashboardData = async () => {
                   </p>
                 </div>
                 <button 
-                  onClick={() => navigate(ROUTES.EMPLOYEE.JOBS)}
+                  onClick={() => switchToTab('jobs')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
                     darkMode 
                       ? 'text-blue-400 hover:bg-blue-500/20' 
@@ -1166,7 +1209,7 @@ const fetchDashboardData = async () => {
                     </p>
                   </div>
                   <button 
-                    onClick={() => navigate(ROUTES.EMPLOYEE.APPLICATIONS)}
+                    onClick={() => switchToTab('applications')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium transition-all ${
                       darkMode 
                         ? 'text-blue-400 hover:bg-blue-500/20' 
@@ -1304,6 +1347,7 @@ const fetchDashboardData = async () => {
               </div>
             </div>
           </div>
+          )}
         </main>
       </div>
     </div>

@@ -7,7 +7,11 @@ import {
 } from 'lucide-react';
 import { useTheme } from "@/components/theme-provider";
 
-const StoriesPage = () => {
+interface StoriesPageProps {
+  embedded?: boolean;
+}
+
+const StoriesPage = ({ embedded = false }: StoriesPageProps) => {
   const { theme } = useTheme();
   const darkMode = theme === 'dark';
   const [showCreateStory, setShowCreateStory] = useState(false);
@@ -527,34 +531,36 @@ const StoriesPage = () => {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
+    <div className={`${embedded ? 'min-h-full' : 'min-h-screen'} transition-colors duration-300 ${
       darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'
     }`}>
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.history.back()}
-              className={`p-2 rounded-lg transition-all ${
-                darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
-              }`}
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={2}
-                stroke="currentColor"
-                className={`w-6 h-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}
+            {!embedded && (
+              <button
+                onClick={() => window.history.back()}
+                className={`p-2 rounded-lg transition-all ${
+                  darkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
+                }`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
-                />
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                  className={`w-6 h-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18"
+                  />
+                </svg>
+              </button>
+            )}
             <div>
               <h1 className={`text-3xl font-black ${
                 darkMode ? 'text-white' : 'bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent'
