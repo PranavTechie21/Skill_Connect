@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTheme } from "@/components/theme-provider";
+import { useAuth } from '@/contexts/AuthContext';
+import { apiFetch } from '@/lib/api';
 import AdminBackButton from "@/components/AdminBackButton";
 import { 
   Plus, 
@@ -53,84 +55,34 @@ interface Job {
   conversionRate: number;
 }
 
-export default function JobManagement() {
+interface JobManagementProps {
+  embedded?: boolean;
+}
+
+function formatSalaryRange(min?: number | null, max?: number | null): string {
+  if (min != null && max != null) return `$${min.toLocaleString()} - $${max.toLocaleString()}`;
+  if (min != null) return `$${min.toLocaleString()}`;
+  if (max != null) return `$${max.toLocaleString()}`;
+  return 'Not specified';
+}
+
+function parseSalaryRange(input: string): { min: number | null; max: number | null } {
+  const cleaned = input.replace(/[,$]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return { min: null, max: null };
+  const nums = cleaned.match(/\d+/g)?.map((n) => Number(n)) ?? [];
+  if (nums.length === 0) return { min: null, max: null };
+  if (nums.length === 1) return { min: nums[0], max: nums[0] };
+  return { min: nums[0], max: nums[1] };
+}
+
+export default function JobManagement({ embedded = false }: JobManagementProps) {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const darkMode = theme === 'dark';
 
-  const [jobs, setJobs] = useState<Job[]>([
-    {
-      id: '1',
-      title: 'Senior Frontend Developer',
-      department: 'Engineering',
-      location: 'San Francisco, CA',
-      type: 'full-time',
-      salary: '$120,000 - $150,000',
-      experience: '5+ years',
-      description: 'We are looking for an experienced Frontend Developer to join our growing team. You will be responsible for building responsive web applications using modern technologies.',
-      requirements: ['React', 'TypeScript', 'Next.js', 'Tailwind CSS', '5+ years experience'],
-      status: 'active',
-      applicants: 24,
-      newApplicants: 5,
-      postedDate: '2024-01-15',
-      expiryDate: '2024-02-15',
-      views: 2450,
-      conversionRate: 0.98
-    },
-    {
-      id: '2',
-      title: 'Product Manager',
-      department: 'Product',
-      location: 'Remote',
-      type: 'full-time',
-      salary: '$100,000 - $130,000',
-      experience: '3+ years',
-      description: 'Lead product development initiatives and work with cross-functional teams to deliver amazing user experiences.',
-      requirements: ['Product Management', 'Agile', 'User Research', 'Data Analysis'],
-      status: 'active',
-      applicants: 18,
-      newApplicants: 3,
-      postedDate: '2024-01-10',
-      expiryDate: '2024-02-10',
-      views: 1890,
-      conversionRate: 0.95
-    },
-    {
-      id: '3',
-      title: 'DevOps Engineer',
-      department: 'Engineering',
-      location: 'New York, NY',
-      type: 'full-time',
-      salary: '$110,000 - $140,000',
-      experience: '4+ years',
-      description: 'Manage cloud infrastructure and implement CI/CD pipelines for our development teams.',
-      requirements: ['AWS', 'Docker', 'Kubernetes', 'CI/CD', 'Terraform'],
-      status: 'paused',
-      applicants: 12,
-      newApplicants: 0,
-      postedDate: '2024-01-05',
-      expiryDate: '2024-02-05',
-      views: 1670,
-      conversionRate: 0.72
-    },
-    {
-      id: '4',
-      title: 'UX Designer',
-      department: 'Design',
-      location: 'Austin, TX',
-      type: 'full-time',
-      salary: '$90,000 - $120,000',
-      experience: '3+ years',
-      description: 'Create beautiful and intuitive user experiences for our web and mobile applications.',
-      requirements: ['Figma', 'User Research', 'Prototyping', 'UI/UX Design'],
-      status: 'draft',
-      applicants: 0,
-      newApplicants: 0,
-      postedDate: '2024-01-18',
-      expiryDate: '2024-02-18',
-      views: 320,
-      conversionRate: 0
-    }
-  ]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -140,6 +92,7 @@ export default function JobManagement() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<string>('newest');
   const [selectedJobs, setSelectedJobs] = useState<string[]>([]);
+  const [bulkAction, setBulkAction] = useState<string>('');
 
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -215,6 +168,43 @@ export default function JobManagement() {
     setSelectedJobs([]);
   };
 
+  const handleBulkApply = () => {
+    if (!bulkAction || selectedJobs.length === 0) return;
+
+    if (bulkAction === 'activate') {
+      setJobs(prev =>
+        prev.map(job =>
+          selectedJobs.includes(job.id) ? { ...job, status: 'active' } : job
+        )
+      );
+    } else if (bulkAction === 'pause') {
+      setJobs(prev =>
+        prev.map(job =>
+          selectedJobs.includes(job.id) ? { ...job, status: 'paused' } : job
+        )
+      );
+    } else if (bulkAction === 'duplicate') {
+      const toDuplicate = jobs.filter(job => selectedJobs.includes(job.id));
+      const duplicates: Job[] = toDuplicate.map(job => ({
+        ...job,
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title: `${job.title} (Copy)`,
+        status: 'draft',
+        applicants: 0,
+        newApplicants: 0,
+        postedDate: new Date().toISOString().split('T')[0],
+        views: 0,
+        conversionRate: 0,
+      }));
+      setJobs(prev => [...duplicates, ...prev]);
+    } else if (bulkAction === 'delete') {
+      setJobs(prev => prev.filter(job => !selectedJobs.includes(job.id)));
+    }
+
+    setBulkAction('');
+    clearSelection();
+  };
+
   const getStatusColor = (status: Job['status']) => {
     const colors = {
       active: darkMode 
@@ -266,6 +256,7 @@ export default function JobManagement() {
 
   // Create Job modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [helpTopic, setHelpTopic] = useState<string>('required');
 
   const location = useLocation();
 
@@ -282,6 +273,63 @@ export default function JobManagement() {
       // ignore
     }
   }, [location]);
+
+  const mapApiJobToUi = (job: any): Job => ({
+    id: String(job.id),
+    title: job.title ?? 'Untitled Job',
+    department: job.company?.industry || 'General',
+    location: job.location ?? 'Not specified',
+    type: (job.jobType || 'full-time') as Job['type'],
+    salary: formatSalaryRange(job.salaryMin, job.salaryMax),
+    experience: '-',
+    description: job.description ?? '',
+    requirements: Array.isArray(job.skills) && job.skills.length > 0
+      ? job.skills
+      : typeof job.requirements === 'string'
+      ? job.requirements.split(',').map((s: string) => s.trim()).filter(Boolean)
+      : [],
+    status: job.isActive ? 'active' : 'paused',
+    applicants: Number(job.applications ?? 0),
+    newApplicants: Number(job.newApplications ?? 0),
+    postedDate: job.createdAt ? new Date(job.createdAt).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+    expiryDate: '',
+    views: Number(job.views ?? 0),
+    conversionRate: Number(job.conversionRate ?? 0),
+  });
+
+  const fetchEmployerJobs = async () => {
+    if (!user?.id) return;
+    setIsLoadingJobs(true);
+    try {
+      const res = await apiFetch('/api/employer/jobs', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch jobs');
+      const data = await res.json();
+      setJobs(Array.isArray(data) ? data.map(mapApiJobToUi) : []);
+    } catch (e) {
+      console.error('Failed to load employer jobs:', e);
+      setJobs([]);
+    } finally {
+      setIsLoadingJobs(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmployerJobs();
+  }, [user?.id]);
+
+  const resolveCompanyId = async (): Promise<string | null> => {
+    if (user?.company?.id) return String(user.company.id);
+    if (!user?.id) return null;
+    try {
+      const res = await apiFetch(`/api/companies?ownerId=${user.id}`, { credentials: 'include' });
+      if (!res.ok) return null;
+      const companies = await res.json();
+      if (Array.isArray(companies) && companies[0]?.id) return String(companies[0].id);
+    } catch {
+      // ignore
+    }
+    return null;
+  };
 
   const [newJobForm, setNewJobForm] = useState({
     title: "",
@@ -322,10 +370,20 @@ export default function JobManagement() {
   // Icon for preview in create modal
   const CreateIcon = pickIconForTitle(newJobForm.title);
 
-  const createJob = () => {
-    // basic validation: required fields
-    if (!newJobForm.title.trim() || !newJobForm.department.trim() || !newJobForm.description.trim()) {
-      alert('Please fill required fields: Title, Department and Description');
+  const createJob = async () => {
+    // basic validation: title + description required
+    if (!newJobForm.title.trim() || !newJobForm.description.trim()) {
+      alert('Please fill required fields: Title and Description');
+      return;
+    }
+    if (!newJobForm.location.trim()) {
+      alert('Please fill required field: Location');
+      return;
+    }
+
+    const companyId = await resolveCompanyId();
+    if (!user?.id || !companyId) {
+      alert('Unable to resolve employer/company. Please update company profile first.');
       return;
     }
 
@@ -334,29 +392,55 @@ export default function JobManagement() {
       .split(',')
       .map(s => s.trim())
       .filter(Boolean);
+    const skillsArr = newJobForm.skills
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    const { min: salaryMin, max: salaryMax } = parseSalaryRange(newJobForm.salary);
 
-    const newJob: Job = {
-      id: Date.now().toString(),
+    if (requirementsArr.length === 0) {
+      alert('Please add at least one requirement.');
+      return;
+    }
+
+    const payload = {
       title: newJobForm.title,
-      department: newJobForm.department,
-      location: newJobForm.location,
-      type: newJobForm.type,
-      salary: newJobForm.salary,
-      experience: newJobForm.experience,
       description: newJobForm.description,
-      requirements: requirementsArr,
-      status: newJobForm.status,
-      applicants: 0,
-      newApplicants: 0,
-      postedDate: new Date().toISOString().split('T')[0],
-      expiryDate: '',
-      views: 0,
-      conversionRate: 0,
-    } as Job;
+      requirements: requirementsArr.join(', '),
+      location: newJobForm.location,
+      jobType: newJobForm.type === 'internship' ? 'contract' : newJobForm.type,
+      salaryMin,
+      salaryMax,
+      skills: skillsArr,
+      companyId,
+      employerId: String(user.id),
+      isActive: newJobForm.status === 'active',
+    };
 
-    setJobs(prev => [newJob, ...prev]);
-    setNewJobForm({ title: '', department: '', location: '', type: 'full-time', salary: '', experience: '', description: '', requirements: '', skills: '', status: 'draft' });
-    setShowCreateModal(false);
+    setIsCreatingJob(true);
+    try {
+      const res = await apiFetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || 'Create job failed');
+      }
+
+      await fetchEmployerJobs();
+      setNewJobForm({ title: '', department: '', location: '', type: 'full-time', salary: '', experience: '', description: '', requirements: '', skills: '', status: 'draft' });
+      setHelpTopic('required');
+      setShowCreateModal(false);
+    } catch (e: any) {
+      console.error('Failed to create job:', e);
+      alert(e?.message || 'Failed to create job');
+    } finally {
+      setIsCreatingJob(false);
+    }
   };
 
   const StatCard = ({ title, value, change, icon: Icon, trend = 'up', color }: any) => (
@@ -384,25 +468,29 @@ export default function JobManagement() {
   );
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
+    <div className={`${embedded ? '' : 'min-h-screen'} transition-colors duration-300 ${
       darkMode 
         ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' 
         : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-50'
     }`}>
       {/* Enhanced Animated Background */}
-      <div className={`fixed inset-0 overflow-hidden pointer-events-none ${
-        darkMode ? 'opacity-100' : 'opacity-40'
-      }`}>
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
-
-      <div className="container mx-auto p-6 max-w-7xl relative">
-        {/* Back Button */}
-        <div className="mb-6">
-          <AdminBackButton />
+      {!embedded && (
+        <div className={`fixed inset-0 overflow-hidden pointer-events-none ${
+          darkMode ? 'opacity-100' : 'opacity-40'
+        }`}>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
         </div>
+      )}
+
+      <div className={`container mx-auto max-w-7xl relative ${embedded ? 'p-2' : 'p-6'}`}>
+        {/* Back Button */}
+        {!embedded && (
+          <div className="mb-6">
+            <AdminBackButton />
+          </div>
+        )}
 
         {/* Enhanced Header */}
         <div className="flex justify-between items-center mb-8">
@@ -578,16 +666,23 @@ export default function JobManagement() {
                 </button>
               </div>
               <div className="flex items-center space-x-3">
-                <select className={`px-3 py-2 rounded-lg ${
+                <select
+                  value={bulkAction}
+                  onChange={(e) => setBulkAction(e.target.value)}
+                  className={`px-3 py-2 rounded-lg ${
                   darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'
                 } border text-sm`}>
-                  <option>Bulk actions</option>
-                  <option>Activate selected</option>
-                  <option>Pause selected</option>
-                  <option>Duplicate selected</option>
-                  <option>Delete selected</option>
+                  <option value="">Bulk actions</option>
+                  <option value="activate">Activate selected</option>
+                  <option value="pause">Pause selected</option>
+                  <option value="duplicate">Duplicate selected</option>
+                  <option value="delete">Delete selected</option>
                 </select>
-                <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors duration-300">
+                <button
+                  onClick={handleBulkApply}
+                  disabled={!bulkAction || selectedJobs.length === 0}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400/60 disabled:cursor-not-allowed text-white rounded-lg text-sm transition-colors duration-300"
+                >
                   Apply
                 </button>
               </div>
@@ -596,6 +691,11 @@ export default function JobManagement() {
         </div>
 
         {/* Enhanced Jobs Grid/List */}
+        {isLoadingJobs ? (
+          <div className="text-center py-16">
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading jobs...</p>
+          </div>
+        ) : (
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-6'}>
           {sortedJobs.map((job) => {
             const StatusIcon = getStatusIcon(job.status);
@@ -758,6 +858,7 @@ export default function JobManagement() {
             );
           })}
         </div>
+        )}
 
         {/* Enhanced Empty State */}
         {filteredJobs.length === 0 && (
@@ -793,19 +894,52 @@ export default function JobManagement() {
               </div>
             </div>
 
+            {/* Help dropdown */}
+            <div className={`mb-4 p-3 rounded-xl border ${darkMode ? 'bg-gray-700/40 border-gray-600' : 'bg-blue-50 border-blue-100'}`}>
+              <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                <label className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                  Need help?
+                </label>
+                <select
+                  value={helpTopic}
+                  onChange={(e) => setHelpTopic(e.target.value)}
+                  className={`px-3 py-2 rounded-lg border text-sm ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                >
+                  <option value="required">Required fields</option>
+                  <option value="salary">Salary format</option>
+                  <option value="requirements">Requirements format</option>
+                </select>
+              </div>
+              <p className={`mt-2 text-xs ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                {helpTopic === 'required' && 'Fields marked with a red * are required to create the job.'}
+                {helpTopic === 'salary' && 'Use either a single number (e.g., 50000) or a range (e.g., 50000 - 70000).'}
+                {helpTopic === 'requirements' && 'Enter requirements as comma-separated values, e.g., React, TypeScript, Communication.'}
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <input
-                value={newJobForm.title}
-                onChange={(e) => setNewJobForm(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Job title (required)"
-                className={`px-4 py-2 rounded-xl border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
-              />
-              <input
-                value={newJobForm.department}
-                onChange={(e) => setNewJobForm(prev => ({ ...prev, department: e.target.value }))}
-                placeholder="Department (required)"
-                className={`px-4 py-2 rounded-xl border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
-              />
+              <div className="space-y-1">
+                <label className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                  Job title <span className="text-red-500">*</span>
+                </label>
+                <input
+                  value={newJobForm.title}
+                  onChange={(e) => setNewJobForm(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Job title"
+                  className={`w-full px-4 py-2 rounded-xl border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                />
+              </div>
+              <div className="space-y-1">
+                <label className={`text-sm font-medium ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                  Department
+                </label>
+                <input
+                  value={newJobForm.department}
+                  onChange={(e) => setNewJobForm(prev => ({ ...prev, department: e.target.value }))}
+                  placeholder="Department (optional)"
+                  className={`w-full px-4 py-2 rounded-xl border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                />
+              </div>
               <input
                 value={newJobForm.location}
                 onChange={(e) => setNewJobForm(prev => ({ ...prev, location: e.target.value }))}
@@ -837,10 +971,13 @@ export default function JobManagement() {
             </div>
 
             <div className="mb-4">
+              <label className={`text-sm font-medium mb-1 block ${darkMode ? 'text-gray-200' : 'text-gray-800'}`}>
+                Detailed description <span className="text-red-500">*</span>
+              </label>
               <textarea
                 value={newJobForm.description}
                 onChange={(e) => setNewJobForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Detailed description (required)"
+                placeholder="Detailed description"
                 rows={4}
                 className={`w-full px-4 py-3 rounded-xl border ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
               />
@@ -870,9 +1007,10 @@ export default function JobManagement() {
               </button>
               <button
                 onClick={createJob}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors duration-300 shadow-lg shadow-blue-600/25"
+                disabled={isCreatingJob}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400/60 disabled:cursor-not-allowed text-white rounded-xl transition-colors duration-300 shadow-lg shadow-blue-600/25"
               >
-                Create Job
+                {isCreatingJob ? 'Creating...' : 'Create Job'}
               </button>
             </div>
           </div>

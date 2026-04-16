@@ -12,8 +12,8 @@ import {
   MoreHorizontal,
   Eye,
   MessageCircle,
-  ThumbsUp,
-  ThumbsDown,
+  CheckCircle,
+  XCircle,
 Star,
   Clock,
   User,
@@ -47,9 +47,19 @@ interface Candidate {
   source: string;
 }
 
-export default function Candidates() {
+interface CandidatesProps {
+  embedded?: boolean;
+}
+
+export default function Candidates({ embedded = false }: CandidatesProps) {
   const { theme } = useTheme();
   const darkMode = theme === 'dark';
+  const panelClass = darkMode
+    ? 'bg-slate-900/85 border-slate-700/70'
+    : 'bg-white border-slate-200';
+  const mutedPanelClass = darkMode
+    ? 'bg-slate-800/70 border-slate-700/60'
+    : 'bg-slate-50 border-slate-200';
 
   const [candidates, setCandidates] = useState<Candidate[]>([
     {
@@ -163,11 +173,16 @@ export default function Candidates() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<string>('newest');
+  const [viewMode, setViewMode] = useState<'pipeline' | 'all'>('pipeline');
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [bulkSelect, setBulkSelect] = useState<string[]>([]);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
-  const filteredCandidates = candidates.filter(candidate => {
+  const baseCandidates = viewMode === 'pipeline'
+    ? candidates.filter(c => c.status === 'reviewed' || c.status === 'interview' || c.status === 'hired')
+    : candidates;
+
+  const filteredCandidates = baseCandidates.filter(candidate => {
     const matchesSearch = candidate.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          candidate.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          candidate.skills.some(skill => skill.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -194,22 +209,22 @@ export default function Candidates() {
 
   const getStatusColor = (status: Candidate['status']) => {
     const colors = {
-      new: 'bg-blue-100 text-blue-800',
-      reviewed: 'bg-yellow-100 text-yellow-800',
-      interview: 'bg-purple-100 text-purple-800',
-      rejected: 'bg-red-100 text-red-800',
-      hired: 'bg-green-100 text-green-800'
+      new: darkMode ? 'bg-blue-500/15 text-blue-300 border border-blue-400/30' : 'bg-blue-100 text-blue-800 border border-blue-200',
+      reviewed: darkMode ? 'bg-amber-500/15 text-amber-300 border border-amber-400/30' : 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+      interview: darkMode ? 'bg-violet-500/15 text-violet-300 border border-violet-400/30' : 'bg-purple-100 text-purple-800 border border-purple-200',
+      rejected: darkMode ? 'bg-rose-500/15 text-rose-300 border border-rose-400/30' : 'bg-red-100 text-red-800 border border-red-200',
+      hired: darkMode ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/30' : 'bg-green-100 text-green-800 border border-green-200'
     };
     return colors[status];
   };
 
   const getStageColor = (stage: Candidate['stage']) => {
     const colors = {
-      applied: 'bg-gray-100 text-gray-800',
-      screening: 'bg-blue-100 text-blue-800',
-      interview: 'bg-purple-100 text-purple-800',
-      offer: 'bg-orange-100 text-orange-800',
-      hired: 'bg-green-100 text-green-800'
+      applied: darkMode ? 'bg-slate-600/35 text-slate-200 border border-slate-500/40' : 'bg-gray-100 text-gray-800 border border-gray-200',
+      screening: darkMode ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-400/30' : 'bg-blue-100 text-blue-800 border border-blue-200',
+      interview: darkMode ? 'bg-violet-500/15 text-violet-300 border border-violet-400/30' : 'bg-purple-100 text-purple-800 border border-purple-200',
+      offer: darkMode ? 'bg-orange-500/15 text-orange-300 border border-orange-400/30' : 'bg-orange-100 text-orange-800 border border-orange-200',
+      hired: darkMode ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/30' : 'bg-green-100 text-green-800 border border-green-200'
     };
     return colors[stage];
   };
@@ -230,90 +245,136 @@ export default function Candidates() {
     ));
   };
 
-  const toggleBulkSelect = (candidateId: string) => {
-    setBulkSelect(prev =>
-      prev.includes(candidateId)
-        ? prev.filter(id => id !== candidateId)
-        : [...prev, candidateId]
-    );
+  const handleApprove = (candidateId: string, currentStatus: Candidate['status']) => {
+    // Promote candidate through a sensible hiring flow with each approve action.
+    if (currentStatus === 'new') {
+      updateCandidateStatus(candidateId, 'reviewed');
+      updateCandidateStage(candidateId, 'screening');
+      return;
+    }
+    if (currentStatus === 'reviewed') {
+      updateCandidateStatus(candidateId, 'interview');
+      updateCandidateStage(candidateId, 'interview');
+      return;
+    }
+    if (currentStatus === 'interview') {
+      updateCandidateStatus(candidateId, 'hired');
+      updateCandidateStage(candidateId, 'hired');
+      return;
+    }
+    updateCandidateStatus(candidateId, 'hired');
+    updateCandidateStage(candidateId, 'hired');
   };
 
-  const selectAll = () => {
-    setBulkSelect(filteredCandidates.map(candidate => candidate.id));
+  const handleReject = (candidateId: string) => {
+    updateCandidateStatus(candidateId, 'rejected');
+    updateCandidateStage(candidateId, 'applied');
   };
 
-  const clearSelection = () => {
-    setBulkSelect([]);
+  const addRemark = (candidateId: string) => {
+    const remark = window.prompt('Add hiring remark (internal note):');
+    if (!remark || !remark.trim()) return;
+    setCandidates(prev => prev.map(candidate =>
+      candidate.id === candidateId
+        ? { ...candidate, notes: `${candidate.notes}\n\nRemark: ${remark.trim()}`, lastActivity: 'Just now' }
+        : candidate
+    ));
   };
 
+  const statsSource = viewMode === 'pipeline' ? baseCandidates : candidates;
   const stats = {
-    total: candidates.length,
-    new: candidates.filter(c => c.status === 'new').length,
-    interview: candidates.filter(c => c.status === 'interview').length,
-    hired: candidates.filter(c => c.status === 'hired').length
+    total: statsSource.length,
+    new: statsSource.filter(c => c.status === 'new').length,
+    interview: statsSource.filter(c => c.status === 'interview').length,
+    hired: statsSource.filter(c => c.status === 'hired').length
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
+    <div className={`${embedded ? '' : 'min-h-screen'} transition-colors duration-300 ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-slate-50'}`}>
       {/* Animated background */}
-      <div className={`fixed inset-0 overflow-hidden pointer-events-none ${darkMode ? 'opacity-100' : 'opacity-0'}`}>
+      <div className={`${embedded ? 'absolute' : 'fixed'} inset-0 overflow-hidden pointer-events-none ${darkMode ? 'opacity-100' : 'opacity-0'}`}>
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>
-      <div className="container mx-auto p-6 max-w-7xl relative">
+      <div className={`${embedded ? '' : 'container mx-auto'} p-6 max-w-7xl relative`}>
         {/* Back Button */}
-        <div className="mb-6">
-          <AdminBackButton />
-        </div>
+        {!embedded && (
+          <div className="mb-6">
+            <AdminBackButton />
+          </div>
+        )}
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex justify-between items-center mb-7">
           <div>
-            <h1 className={`text-3xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Candidates</h1>
-            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-2`}>Manage and review applicant profiles</p>
+            <h1 className={`text-3xl font-extrabold tracking-tight ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>Candidates</h1>
+            <p className={`${darkMode ? 'text-slate-400' : 'text-slate-600'} mt-2`}>Manage and review applicant profiles</p>
           </div>
           <div className="flex items-center space-x-4">
-            <button className={`flex items-center space-x-2 ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white px-4 py-2 rounded-lg transition-colors duration-300`}>
+            <button className={`flex items-center space-x-2 ${darkMode ? 'bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-950/30' : 'bg-blue-500 hover:bg-blue-600'} text-white px-4 py-2 rounded-lg transition-colors duration-300`}>
               <Download className="w-4 h-4" />
               <span>Export</span>
             </button>
           </div>
         </div>
 
+        <div className={`inline-flex items-center gap-2 p-1 rounded-xl border mb-6 ${darkMode ? 'bg-slate-900/80 border-slate-700' : 'bg-white border-slate-200'}`}>
+          <button
+            onClick={() => setViewMode('pipeline')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              viewMode === 'pipeline'
+                ? (darkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-700')
+                : (darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100')
+            }`}
+          >
+            Pipeline Candidates
+          </button>
+          <button
+            onClick={() => setViewMode('all')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
+              viewMode === 'all'
+                ? (darkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-100 text-indigo-700')
+                : (darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-600 hover:bg-slate-100')
+            }`}
+          >
+            All Applicants
+          </button>
+        </div>
+
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg p-6 backdrop-blur-sm`}>
+          <div className={`${panelClass} border rounded-xl p-6 backdrop-blur-sm shadow-sm`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Total Candidates</p>
-                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.total}</p>
+                <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'} text-xs uppercase tracking-wide`}>Total Candidates</p>
+                <p className={`text-2xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stats.total}</p>
               </div>
               <User className={`w-8 h-8 ${darkMode ? 'text-blue-400' : 'text-blue-500'}`} />
             </div>
           </div>
-          <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg p-6 backdrop-blur-sm`}>
+          <div className={`${panelClass} border rounded-xl p-6 backdrop-blur-sm shadow-sm`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm`}>New Applications</p>
-                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.new}</p>
+                <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'} text-xs uppercase tracking-wide`}>New Applications</p>
+                <p className={`text-2xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stats.new}</p>
               </div>
               <Clock className={`w-8 h-8 ${darkMode ? 'text-yellow-400' : 'text-yellow-500'}`} />
             </div>
           </div>
-          <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg p-6 backdrop-blur-sm`}>
+          <div className={`${panelClass} border rounded-xl p-6 backdrop-blur-sm shadow-sm`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm`}>In Interview</p>
-                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.interview}</p>
+                <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'} text-xs uppercase tracking-wide`}>In Interview</p>
+                <p className={`text-2xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stats.interview}</p>
               </div>
               <MessageCircle className={`w-8 h-8 ${darkMode ? 'text-purple-400' : 'text-purple-500'}`} />
             </div>
           </div>
-          <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg p-6 backdrop-blur-sm`}>
+          <div className={`${panelClass} border rounded-xl p-6 backdrop-blur-sm shadow-sm`}>
             <div className="flex items-center justify-between">
               <div>
-                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Hired</p>
-                <p className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{stats.hired}</p>
+                <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'} text-xs uppercase tracking-wide`}>Hired</p>
+                <p className={`text-2xl font-extrabold tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>{stats.hired}</p>
               </div>
               <Award className={`w-8 h-8 ${darkMode ? 'text-green-400' : 'text-green-500'}`} />
             </div>
@@ -321,7 +382,7 @@ export default function Candidates() {
         </div>
 
         {/* Search and Filter Bar */}
-        <div className={`${darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg shadow-lg p-6 backdrop-blur-sm mb-6`}>
+        <div className={`${panelClass} border rounded-xl shadow-sm p-5 backdrop-blur-sm mb-6`}>
           <div className="flex flex-col lg:flex-row gap-4">
             {/* Search */}
             <div className="flex-1 relative">
@@ -331,7 +392,7 @@ export default function Candidates() {
                 placeholder="Search candidates by name, position, or skills..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 ${darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-gray-100 border-gray-300 text-gray-900 placeholder-gray-500'} border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className={`w-full pl-10 pr-4 py-3 ${darkMode ? 'bg-slate-800 border-slate-600 text-white placeholder-slate-400' : 'bg-slate-100 border-slate-300 text-slate-900 placeholder-slate-500'} border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
               />
             </div>
 
@@ -340,7 +401,7 @@ export default function Candidates() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className={`px-4 py-3 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className={`px-4 py-3 ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
               >
                 <option value="all">All Status</option>
                 <option value="new">New</option>
@@ -353,7 +414,7 @@ export default function Candidates() {
               <select
                 value={stageFilter}
                 onChange={(e) => setStageFilter(e.target.value)}
-                className={`px-4 py-3 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className={`px-4 py-3 ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
               >
                 <option value="all">All Stages</option>
                 <option value="applied">Applied</option>
@@ -366,7 +427,7 @@ export default function Candidates() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className={`px-4 py-3 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                className={`px-4 py-3 ${darkMode ? 'bg-slate-800 border-slate-600 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'} border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent`}
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -376,7 +437,7 @@ export default function Candidates() {
 
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center space-x-2 px-4 py-3 ${darkMode ? 'bg-gray-700 border-gray-600 text-white hover:bg-gray-600' : 'bg-gray-100 border-gray-300 text-gray-900 hover:bg-gray-200'} border rounded-lg transition-colors duration-300`}
+                className={`flex items-center space-x-2 px-4 py-3 ${darkMode ? 'bg-slate-800 border-slate-600 text-white hover:bg-slate-700' : 'bg-slate-100 border-slate-300 text-slate-900 hover:bg-slate-200'} border rounded-lg transition-colors duration-300`}
               >
                 <Filter className="w-5 h-5" />
                 <span>More Filters</span>
@@ -384,81 +445,106 @@ export default function Candidates() {
             </div>
           </div>
 
-          {/* Bulk Actions */}
-          {bulkSelect.length > 0 && (
-            <div className={`flex items-center justify-between mt-4 p-4 ${darkMode ? 'bg-blue-600/20 border-blue-500/30' : 'bg-blue-100 border-blue-200'} rounded-lg border`}>
-              <div className="flex items-center space-x-3">
-                <span className={`${darkMode ? 'text-white' : 'text-gray-900'} font-medium`}>
-                  {bulkSelect.length} candidate{bulkSelect.length > 1 ? 's' : ''} selected
-                </span>
-                <button
-                  onClick={clearSelection}
-                  className={`${darkMode ? 'text-blue-300 hover:text-white' : 'text-blue-600 hover:text-blue-800'} text-sm transition-colors duration-300`}
-                >
-                  Clear selection
-                </button>
-              </div>
-              <div className="flex items-center space-x-3">
-                <select className={`px-3 py-1 ${darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'} border rounded text-sm`}>
-                  <option>Bulk actions</option>
-                  <option>Move to screening</option>
-                  <option>Schedule interview</option>
-                  <option>Send email</option>
-                  <option>Reject candidates</option>
-                </select>
-                <button className={`px-4 py-1 ${darkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600'} text-white rounded text-sm transition-colors duration-300`}>
-                  Apply
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Candidates Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
           {sortedCandidates.map((candidate) => (
             <div
               key={candidate.id}
-              className={`${darkMode ? 'bg-gray-800/80 border-gray-700/50' : 'bg-white border-gray-200'} border rounded-lg shadow-lg backdrop-blur-sm hover:shadow-xl transition-all duration-300`}
+              className={`${panelClass} border rounded-2xl shadow-sm backdrop-blur-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 ${
+                darkMode ? 'hover:border-indigo-400/30' : 'hover:border-indigo-200'
+              }`}
             >
               {/* Header */}
-              <div className={`p-6 border-b ${darkMode ? 'border-gray-700/50' : 'border-gray-200'}`}>
+              <div className={`p-5 border-b ${darkMode ? 'border-slate-700/60' : 'border-slate-200'}`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={bulkSelect.includes(candidate.id)}
-                      onChange={() => toggleBulkSelect(candidate.id)}
-                      className={`rounded ${darkMode ? 'border-gray-600 bg-gray-700 text-blue-600' : 'border-gray-300 bg-gray-100 text-blue-500'} focus:ring-blue-500`}
-                    />
-                    <img
-                      src={candidate.avatar}
-                      alt={candidate.name}
-                      className="w-12 h-12 rounded-full object-cover"
-                    />
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-bold shadow-sm">
+                      {candidate.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    </div>
                     <div>
-                      <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{candidate.name}</h3>
-                      <p className={`${darkMode ? 'text-blue-400' : 'text-blue-600'} text-sm`}>{candidate.position}</p>
+                      <h3 className={`text-lg font-bold ${darkMode ? 'text-white' : 'text-slate-900'}`}>{candidate.name}</h3>
+                      <p className={`${darkMode ? 'text-indigo-300' : 'text-blue-600'} text-sm`}>{candidate.position}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <div className={`flex items-center space-x-1 ${darkMode ? 'bg-gray-700' : 'bg-gray-100'} px-2 py-1 rounded`}>
+                    <div className={`flex items-center space-x-1 ${darkMode ? 'bg-slate-700/80 border border-slate-600' : 'bg-slate-100'} px-2 py-1 rounded`}>
                       <Star className="w-4 h-4 text-yellow-400 fill-current" />
                       <span className={`${darkMode ? 'text-white' : 'text-gray-900'} text-sm`}>{candidate.rating}</span>
                     </div>
-                    <button className={`${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'} transition-colors duration-300`}>
+                    <div className="relative">
+                    <button
+                      onClick={() => setOpenMenuId(prev => prev === candidate.id ? null : candidate.id)}
+                      className={`${darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-700/60' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'} p-1.5 rounded-md transition-colors duration-300`}
+                      title="More actions"
+                    >
                       <MoreHorizontal className="w-5 h-5" />
                     </button>
+                    {openMenuId === candidate.id && (
+                      <div className={`absolute right-0 mt-2 w-60 rounded-xl border shadow-xl z-20 ${
+                        darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'
+                      }`}>
+                        <div className={`px-3 py-2 border-b ${darkMode ? 'border-slate-700 text-slate-300' : 'border-slate-200 text-slate-600'} text-xs`}>
+                          <p>Match: <span className="font-semibold">{candidate.match}%</span></p>
+                          <p>Status: <span className="font-semibold capitalize">{candidate.status}</span></p>
+                          <p>Stage: <span className="font-semibold capitalize">{candidate.stage}</span></p>
+                        </div>
+                        <div className="p-1.5">
+                          <button
+                            onClick={() => { setSelectedCandidate(candidate); setOpenMenuId(null); }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${darkMode ? 'text-slate-200 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'}`}
+                          >
+                            View Details
+                          </button>
+                          <button
+                            onClick={() => { addRemark(candidate.id); setOpenMenuId(null); }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${darkMode ? 'text-slate-200 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'}`}
+                          >
+                            Add Remark
+                          </button>
+                          <button
+                            onClick={() => { updateCandidateStatus(candidate.id, 'interview'); updateCandidateStage(candidate.id, 'interview'); setOpenMenuId(null); }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${darkMode ? 'text-indigo-300 hover:bg-slate-800' : 'text-indigo-700 hover:bg-slate-100'}`}
+                          >
+                            Move to Interview
+                          </button>
+                          <button
+                            onClick={() => { handleApprove(candidate.id, candidate.status); setOpenMenuId(null); }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${darkMode ? 'text-emerald-300 hover:bg-slate-800' : 'text-emerald-700 hover:bg-slate-100'}`}
+                          >
+                            Approve / Mark Hired
+                          </button>
+                          <button
+                            onClick={() => { handleReject(candidate.id); setOpenMenuId(null); }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${darkMode ? 'text-rose-300 hover:bg-slate-800' : 'text-rose-700 hover:bg-slate-100'}`}
+                          >
+                            Reject Candidate
+                          </button>
+                          <button
+                            onClick={() => {
+                              updateCandidateStatus(candidate.id, 'new');
+                              updateCandidateStage(candidate.id, 'applied');
+                              setOpenMenuId(null);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm ${darkMode ? 'text-slate-300 hover:bg-slate-800' : 'text-slate-700 hover:bg-slate-100'}`}
+                          >
+                            Move Back to Applications
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    </div>
                   </div>
                 </div>
 
                 {/* Match Score */}
                 <div className="mb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm`}>Match Score</span>
+                    <span className={`${darkMode ? 'text-slate-400' : 'text-slate-500'} text-sm`}>Match Score</span>
                     <span className="text-green-500 font-medium text-sm">{candidate.match}%</span>
                   </div>
-                  <div className={`w-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-2`}>
+                  <div className={`w-full ${darkMode ? 'bg-slate-700' : 'bg-slate-200'} rounded-full h-2`}>
                     <div
                       className="bg-green-500 h-2 rounded-full transition-all duration-300"
                       style={{ width: `${candidate.match}%` }}
@@ -468,17 +554,17 @@ export default function Candidates() {
 
                 {/* Status and Stage */}
                 <div className="flex items-center justify-between">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(candidate.status)}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStatusColor(candidate.status)}`}>
                     {candidate.status}
                   </span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStageColor(candidate.stage)} capitalize`}>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${getStageColor(candidate.stage)} capitalize`}>
                     {candidate.stage}
                   </span>
                 </div>
               </div>
 
               {/* Details */}
-              <div className="p-6">
+              <div className="p-5">
                 {/* Contact Info */}
                 <div className="space-y-2 mb-4">
                   <div className={`flex items-center space-x-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -497,18 +583,18 @@ export default function Candidates() {
 
                 {/* Skills */}
                 <div className="mb-4">
-                  <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} text-sm mb-2`}>Skills:</p>
+                  <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'} text-sm mb-2`}>Skills:</p>
                   <div className="flex flex-wrap gap-2">
                     {candidate.skills.slice(0, 3).map((skill, index) => (
                       <span
                         key={index}
-                        className={`px-2 py-1 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800'} rounded text-xs`}
+                        className={`px-2 py-1 ${darkMode ? 'bg-slate-700/80 text-slate-200' : 'bg-slate-100 text-slate-800'} rounded text-xs`}
                       >
                         {skill}
                       </span>
                     ))}
                     {candidate.skills.length > 3 && (
-                      <span className={`px-2 py-1 ${darkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-800'} rounded text-xs`}>
+                      <span className={`px-2 py-1 ${darkMode ? 'bg-slate-700/80 text-slate-200' : 'bg-slate-100 text-slate-800'} rounded text-xs`}>
                         +{candidate.skills.length - 3} more
                       </span>
                     )}
@@ -516,29 +602,12 @@ export default function Candidates() {
                 </div>
 
                 {/* Footer */}
-                <div className={`flex items-center justify-between pt-4 border-t ${darkMode ? 'border-gray-700/50' : 'border-gray-200'}`}>
+                <div className={`flex items-center justify-between pt-4 border-t ${darkMode ? 'border-slate-700/60' : 'border-slate-200'}`}>
                   <div className={`flex items-center space-x-1 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                     <Calendar className="w-4 h-4" />
                     <span>Applied {new Date(candidate.appliedDate).toLocaleDateString()}</span>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setSelectedCandidate(candidate)}
-                      className={`p-2 ${darkMode ? 'text-gray-400 hover:text-blue-400' : 'text-gray-500 hover:text-blue-600'} transition-colors duration-300`}
-                      title="View Details"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button className={`p-2 ${darkMode ? 'text-gray-400 hover:text-green-400' : 'text-gray-500 hover:text-green-600'} transition-colors duration-300`} title="Send Message">
-                      <MessageCircle className="w-4 h-4" />
-                    </button>
-                    <button className={`p-2 ${darkMode ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-600'} transition-colors duration-300`} title="Reject">
-                      <ThumbsDown className="w-4 h-4" />
-                    </button>
-                    <button className={`p-2 ${darkMode ? 'text-gray-400 hover:text-green-400' : 'text-gray-500 hover:text-green-600'} transition-colors duration-300`} title="Approve">
-                      <ThumbsUp className="w-4 h-4" />
-                    </button>
-                  </div>
+                  <span className={`text-xs ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>Use `...` for actions</span>
                 </div>
               </div>
             </div>
@@ -550,7 +619,11 @@ export default function Candidates() {
           <div className="text-center py-12">
             <User className={`w-16 h-16 ${darkMode ? 'text-gray-400' : 'text-gray-500'} mx-auto mb-4`} />
             <h3 className={`text-xl font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-800'} mb-2`}>No candidates found</h3>
-            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-6`}>Try adjusting your search or filters</p>
+            <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mb-6`}>
+              {viewMode === 'pipeline'
+                ? 'No shortlisted/interview/hired candidates yet. Move applicants from Applications tab.'
+                : 'Try adjusting your search or filters'}
+            </p>
           </div>
         )}
       </div>
@@ -558,7 +631,7 @@ export default function Candidates() {
       {/* Candidate Detail Modal */}
       {selectedCandidate && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto`}>
+          <div className={`${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200'} border rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto`}>
             <div className={`p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
               <div className="flex justify-between items-start">
                 <div className="flex items-center space-x-4">

@@ -24,7 +24,11 @@ interface Story {
   createdAt: string;
 }
 
-export default function Stories() {
+interface StoriesProps {
+  embedded?: boolean;
+}
+
+export default function Stories({ embedded = false }: StoriesProps) {
   const { theme } = useTheme();
   const darkMode = theme === 'dark' || (theme === 'system' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const { toast } = useToast();
@@ -191,11 +195,11 @@ export default function Stories() {
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'}`}>
-      <div className="max-w-7xl mx-auto p-6">
+    <div className={`${embedded ? '' : 'min-h-screen'} ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'}`}>
+      <div className={`max-w-7xl mx-auto ${embedded ? 'p-2' : 'p-6'}`}>
         {/* Header */}
         <div className="mb-6">
-          <AdminBackButton />
+          {!embedded && <AdminBackButton />}
         </div>
 
         <div className="flex items-center justify-between mb-8">

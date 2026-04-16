@@ -64,7 +64,11 @@ interface AnalyticsData {
   };
 }
 
-export default function Analytics() {
+interface AnalyticsProps {
+  embedded?: boolean;
+}
+
+export default function Analytics({ embedded = false }: AnalyticsProps) {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
   const [activeMetric, setActiveMetric] = useState<'views' | 'applicants' | 'conversions'>('views');
   const { theme } = useTheme();
@@ -504,19 +508,21 @@ export default function Analytics() {
   );
 
   return (
-    <div className={`min-h-screen transition-colors duration-700 ${
+    <div className={`${embedded ? '' : 'min-h-screen'} transition-colors duration-700 ${
       isDark 
         ? 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-gray-950 to-black' 
         : 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-50 via-white to-purple-50'
     }`}>
       {/* Animated particles */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute top-40 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
-      </div>
+      {!embedded && (
+        <div className="fixed inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute top-40 right-20 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute bottom-20 left-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
+        </div>
+      )}
 
-      <div className="container mx-auto p-8 max-w-7xl relative">
+      <div className={`container mx-auto max-w-7xl relative ${embedded ? 'p-2' : 'p-8'}`}>
         {/* Header */}
         <div className="flex justify-between items-start mb-10">
           <div>
@@ -532,16 +538,18 @@ export default function Analytics() {
             }`}>Real-time insights and performance metrics</p>
           </div>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate(-1)}
-              className={`p-3 rounded-2xl transition-all duration-300 hover:scale-110 ${
-                isDark 
-                  ? 'bg-gray-800/60 border border-gray-700/50 text-gray-300 hover:bg-gray-700/60' 
-                  : 'bg-white/80 border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-lg'
-              }`}
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
+            {!embedded && (
+              <button
+                onClick={() => navigate(-1)}
+                className={`p-3 rounded-2xl transition-all duration-300 hover:scale-110 ${
+                  isDark 
+                    ? 'bg-gray-800/60 border border-gray-700/50 text-gray-300 hover:bg-gray-700/60' 
+                    : 'bg-white/80 border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-lg'
+                }`}
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value as any)}

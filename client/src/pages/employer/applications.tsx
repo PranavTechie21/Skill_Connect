@@ -12,7 +12,11 @@ interface Application {
   [key: string]: any;
 }
 
-export default function Applications() {
+interface ApplicationsProps {
+  embedded?: boolean;
+}
+
+export default function Applications({ embedded = false }: ApplicationsProps) {
   const [selectedTab, setSelectedTab] = useState<ApplicationStatus | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'match' | 'salary'>('recent');
@@ -204,19 +208,23 @@ export default function Applications() {
   const isDark = theme === 'dark';
 
   return (
-    <div className={`min-h-screen ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
+    <div className={`${embedded ? '' : 'min-h-screen'} ${isDark ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
       {/* Back Button */}
-      <div className="p-6">
-        <AdminBackButton />
-      </div>
+      {!embedded && (
+        <div className="p-6">
+          <AdminBackButton />
+        </div>
+      )}
       {/* Animated background */}
-      <div className={`fixed inset-0 overflow-hidden pointer-events-none ${isDark ? 'opacity-100' : 'opacity-30'}`}>
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-      </div>
+      {!embedded && (
+        <div className={`fixed inset-0 overflow-hidden pointer-events-none ${isDark ? 'opacity-100' : 'opacity-30'}`}>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+        </div>
+      )}
 
-      <div className="relative container mx-auto p-6 max-w-7xl">
+      <div className={`relative container mx-auto max-w-7xl ${embedded ? 'p-2' : 'p-6'}`}>
         {/* Header */}
         <div className="mb-8">
           <h1 className={`text-4xl font-bold ${isDark 

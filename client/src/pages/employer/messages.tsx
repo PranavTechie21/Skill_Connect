@@ -3,7 +3,11 @@ import { Search, Send, Paperclip, Smile, MoreVertical, Phone, Video, Star, Check
 import { useTheme } from "@/components/theme-provider";
 import AdminBackButton from "@/components/AdminBackButton";
 
-export default function Messages() {
+interface MessagesProps {
+  embedded?: boolean;
+}
+
+export default function Messages({ embedded = false }: MessagesProps) {
   const [selectedChat, setSelectedChat] = useState(1);
   const [message, setMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,18 +136,20 @@ export default function Messages() {
   const darkMode = theme === 'dark';
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
-      <div className="mb-6 p-6">
-        <AdminBackButton />
-      </div>
+    <div className={`${embedded ? '' : 'min-h-screen'} ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
+      {!embedded && (
+        <div className="mb-6 p-6">
+          <AdminBackButton />
+        </div>
+      )}
       {/* Animated background */}
-      {darkMode && <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      {!embedded && darkMode && <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
         <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
       </div>}
 
-      <div className="relative container mx-auto p-6 max-w-7xl">
+      <div className={`relative container mx-auto max-w-7xl ${embedded ? 'p-2' : 'p-6'}`}>
         {/* Header */}
         <div className="mb-6">
           <h1 className={`text-4xl font-bold ${darkMode ? 'bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent' : 'text-gray-900'} mb-2`}>

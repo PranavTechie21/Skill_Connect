@@ -50,7 +50,11 @@ interface CompanyProfile {
   isProfilePublic: boolean;
 }
 
-export default function Profile() {
+interface ProfileProps {
+  embedded?: boolean;
+}
+
+export default function Profile({ embedded = false }: ProfileProps) {
   const { user } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -389,7 +393,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
+      <div className={`${embedded ? '' : 'min-h-screen'} flex items-center justify-center ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin mx-auto mb-4 text-blue-600" />
           <p className={`text-lg ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading company profile...</p>
@@ -399,18 +403,20 @@ export default function Profile() {
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
-      <div className="container mx-auto p-6 max-w-7xl">
+    <div className={`${embedded ? '' : 'min-h-screen'} ${darkMode ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950' : 'bg-gray-50'}`}>
+      <div className={`container mx-auto max-w-7xl ${embedded ? 'p-2' : 'p-6'}`}>
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/employer/dashboard')}
-              className={`p-2 rounded-lg transition-all duration-200 ${darkMode ? 'hover:bg-gray-800 text-gray-400 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`}
-              title="Back to Dashboard"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
+            {!embedded && (
+              <button
+                onClick={() => navigate('/employer/dashboard')}
+                className={`p-2 rounded-lg transition-all duration-200 ${darkMode ? 'hover:bg-gray-800 text-gray-400 hover:text-white' : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900'}`}
+                title="Back to Dashboard"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+            )}
             <div>
               <h1 className={`text-3xl font-bold ${darkMode ? 'text-gray-100' : 'text-gray-900'}`}>Company Profile</h1>
               <p className={`mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>

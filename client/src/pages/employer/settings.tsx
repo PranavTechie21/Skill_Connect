@@ -76,8 +76,12 @@ interface SecuritySettings {
   loginAlerts: boolean;
 }
 
+interface EmployerSettingsProps {
+  embedded?: boolean;
+}
+
 // Main Settings Component
-const EmployerSettings: React.FC = () => {
+const EmployerSettings: React.FC<EmployerSettingsProps> = ({ embedded = false }) => {
   const { theme } = useTheme();
   const { user } = useAuth();
   const isDarkMode = theme === 'dark';
@@ -220,18 +224,20 @@ const EmployerSettings: React.FC = () => {
 
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
+    <div className={`${embedded ? '' : 'min-h-screen'} transition-colors duration-300 ${
       isDarkMode 
         ? 'bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white' 
         : 'bg-gradient-to-br from-gray-50 via-blue-50 to-cyan-50 text-gray-900'
     }`}>
       {/* Enhanced Animated background */}
-      <div className={`fixed inset-0 overflow-hidden pointer-events-none ${isDarkMode ? 'opacity-100' : 'opacity-40'}`}>
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-        <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
-        <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1.5s' }}></div>
-      </div>
+      {!embedded && (
+        <div className={`fixed inset-0 overflow-hidden pointer-events-none ${isDarkMode ? 'opacity-100' : 'opacity-40'}`}>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse"></div>
+          <div className="absolute top-1/2 -left-40 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute -bottom-40 right-1/3 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
+          <div className="absolute top-1/3 left-1/4 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1.5s' }}></div>
+        </div>
+      )}
 
       {/* Enhanced Success Toast */}
       {showSaveSuccess && (
@@ -253,24 +259,26 @@ const EmployerSettings: React.FC = () => {
         </div>
       )}
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl relative">
+      <div className={`container mx-auto px-4 max-w-7xl relative ${embedded ? 'py-2' : 'py-8'}`}>
         {/* Enhanced Back Button */}
-        <div className="mb-6">
-          <button
-            onClick={() => window.history.back()}
-            className={`group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 backdrop-blur-sm border ${
-              isDarkMode
-                ? 'bg-gray-800/50 hover:bg-gray-700/50 text-white border-gray-700 hover:border-gray-600'
-                : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-            <span className="font-medium">Back to Dashboard</span>
-          </button>
-        </div>
+        {!embedded && (
+          <div className="mb-6">
+            <button
+              onClick={() => window.history.back()}
+              className={`group flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-300 backdrop-blur-sm border ${
+                isDarkMode
+                  ? 'bg-gray-800/50 hover:bg-gray-700/50 text-white border-gray-700 hover:border-gray-600'
+                  : 'bg-white/80 hover:bg-white text-gray-900 border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              <span className="font-medium">Back to Dashboard</span>
+            </button>
+          </div>
+        )}
 
         {/* Enhanced Header */}
-        <header className={`flex flex-col items-center justify-center mb-8 p-8 rounded-2xl backdrop-blur-xl border transition-all duration-300 ${
+        <header className={`flex flex-col items-center justify-center mb-8 ${embedded ? 'p-5' : 'p-8'} rounded-2xl backdrop-blur-xl border transition-all duration-300 ${
           isDarkMode 
             ? 'bg-gray-800/50 border-gray-700/50 shadow-2xl shadow-blue-500/10' 
             : 'bg-white/80 border-gray-200/50 shadow-xl'
