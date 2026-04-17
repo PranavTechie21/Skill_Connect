@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import AdminBackButton from '@/components/AdminBackButton';
+import AdminBackButton, { useAdminEmbedded } from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import { Users, Search, Plus, Edit, Trash2, MoreVertical, Mail, Calendar, MapPin, Briefcase, Award, TrendingUp, Clock, Filter, Eye, CheckCircle, XCircle } from 'lucide-react';
 import { adminService, User, CreateUserData, AdminStats } from '@/lib/admin-service';
@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 
 export default function AdminEmployees() {
   const { theme } = useTheme();
+  const { embedded } = useAdminEmbedded();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   const [employees, setEmployees] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,24 +230,24 @@ export default function AdminEmployees() {
   }, [employees, filteredEmployees, searchTerm, loading]);
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'}`}>
+    <div className={`${embedded ? '' : `min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8`}`}>
       {/* Header */}
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
-        <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className={`${embedded ? 'mb-6' : `${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}`}>
+        <div className={`${embedded ? '' : 'max-w-7xl mx-auto px-6 py-6'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="mr-4"><AdminBackButton /></div>
-              <div className="bg-gradient-to-br from-green-400 to-green-600 p-4 rounded-2xl shadow-lg">
+              <div className="bg-gradient-to-br from-green-500 to-emerald-600 p-4 rounded-2xl shadow-lg shadow-green-500/40">
                 <Users className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Employees</h1>
-                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>Manage and monitor employee accounts</p>
+                <h1 className={`text-4xl font-black ${darkMode ? 'text-white' : 'bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent'}`}>Employees Management</h1>
+                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>Manage and monitor employee accounts</p>
               </div>
             </div>
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
-                <button className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-lg shadow-green-200/20">
+                <button className="flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-700 text-white px-6 py-3 rounded-xl hover:from-green-700 hover:to-emerald-800 transition-all shadow-lg">
                   <Plus className="w-5 h-5" />
                   Add Employee
                 </button>
@@ -301,11 +302,11 @@ export default function AdminEmployees() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className={`${embedded ? '' : 'max-w-7xl mx-auto px-6 py-8'}`}>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => (
-            <div key={index} className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-sm border p-6 hover:shadow-md transition-shadow`}>
+            <div key={index} className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-3xl shadow-lg border-2 p-6 hover:shadow-xl transition-all`}>
               <div className="flex items-center justify-between mb-4">
                 <div className={`${darkMode ? stat.color + '/20' : stat.bgLight} p-3 rounded-lg`}>
                   <stat.icon className={`w-6 h-6 ${darkMode ? stat.color.replace('bg-', 'text-') + '/80' : stat.color.replace('bg-', 'text-')}`} />
@@ -322,7 +323,7 @@ export default function AdminEmployees() {
         </div>
 
         {/* Main Content Card */}
-        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-sm border`}>
+        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-3xl shadow-xl border-2`}>
           {/* Search and Filter Bar */}
           <div className={`p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -333,8 +334,8 @@ export default function AdminEmployees() {
                   placeholder="Search employees by name, email, or location..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-11 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all ${
-                    darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900'
+                  className={`w-full pl-11 pr-4 py-4 border-2 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition-all ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-500' : 'bg-gray-50 border-gray-200 text-gray-900'
                   }`}
                 />
               </div>

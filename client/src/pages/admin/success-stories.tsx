@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Search, Eye, Check, X, Trash2, Mail, Calendar, RefreshCw, Plus, TrendingUp, Clock, CheckCircle, XCircle } from 'lucide-react';
-import AdminBackButton from '../../components/AdminBackButton';
+import AdminBackButton, { useAdminEmbedded } from '../../components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import { apiFetch } from '../../lib/api';
 
 const SuccessStoriesAdmin = () => {
   const { theme: currentTheme } = useTheme();
+  const { embedded } = useAdminEmbedded();
   const darkMode = currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   
   interface Story {
@@ -29,9 +30,25 @@ const SuccessStoriesAdmin = () => {
     const fetchStories = async () => {
       try {
         setIsLoading(true);
-        const response = await apiFetch(`/api/admin/stories`);
+        const response = await apiFetch(`/api/admin/stories`, { credentials: 'include' });
         if (!response.ok) {
-          throw new Error('Failed to fetch stories');
+          let detail = '';
+          try {
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+              const json = await response.json();
+                if (json?.debug) {
+                  detail = `Debug: ${JSON.stringify(json.debug)}`;
+                } else {
+                  detail = (json?.message || json?.error || JSON.stringify(json)) as string;
+                }
+            } else {
+              detail = await response.text();
+            }
+          } catch {
+            // ignore body parsing errors
+          }
+          throw new Error(`Failed to fetch stories (${response.status}): ${detail || response.statusText}`);
         }
         const data = await response.json();
         
@@ -240,21 +257,21 @@ const SuccessStoriesAdmin = () => {
   };
 
   return (
-    <div className={`min-h-screen ${theme.bg}`}>
+    <div className={`${embedded ? '' : `min-h-screen ${theme.bg}`}`}>
       {/* Header */}
-      <div className={`${theme.cardBg} border-b ${theme.cardBorder}`}>
-        <div className="max-w-[1600px] mx-auto px-6 py-5">
+      <div className={`${embedded ? 'mb-6' : `${theme.cardBg} border-b ${theme.cardBorder}`}`}>
+        <div className={`${embedded ? '' : 'max-w-[1600px] mx-auto px-6 py-5'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="mr-4"><AdminBackButton /></div>
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center">
+                <div className="w-14 h-14 bg-gradient-to-br from-purple-600 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/40">
                   <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                   </svg>
                 </div>
                 <div>
-                  <h1 className={`text-2xl font-bold ${theme.text}`}>Success Stories</h1>
+                  <h1 className={`text-4xl font-black ${darkMode ? 'text-white' : 'bg-gradient-to-r from-purple-600 to-pink-500 bg-clip-text text-transparent'}`}>Success Stories</h1>
                   <p className={theme.textSecondary}>Manage and review community success stories</p>
                 </div>
               </div>
@@ -273,9 +290,9 @@ const SuccessStoriesAdmin = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="max-w-[1600px] mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} p-5`}>
+      <div className={`${embedded ? '' : 'max-w-[1600px] mx-auto px-6 py-6'}`}>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className={`${theme.cardBg} rounded-3xl border-2 ${theme.cardBorder} p-6 shadow-lg`}>
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center">
                 <svg className="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -288,7 +305,7 @@ const SuccessStoriesAdmin = () => {
             <div className={`text-3xl font-bold ${theme.text}`}>{stats.total}</div>
           </div>
 
-          <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} p-5`}>
+          <div className={`${theme.cardBg} rounded-3xl border-2 ${theme.cardBorder} p-6 shadow-lg`}>
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 bg-orange-500/10 rounded-xl flex items-center justify-center">
                 <Clock size={24} className="text-orange-500" />
@@ -299,7 +316,7 @@ const SuccessStoriesAdmin = () => {
             <div className={`text-3xl font-bold ${theme.text}`}>{stats.pending}</div>
           </div>
 
-          <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} p-5`}>
+          <div className={`${theme.cardBg} rounded-3xl border-2 ${theme.cardBorder} p-6 shadow-lg`}>
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 bg-green-500/10 rounded-xl flex items-center justify-center">
                 <CheckCircle size={24} className="text-green-500" />
@@ -310,7 +327,7 @@ const SuccessStoriesAdmin = () => {
             <div className={`text-3xl font-bold ${theme.text}`}>{stats.approved}</div>
           </div>
 
-          <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} p-5`}>
+          <div className={`${theme.cardBg} rounded-3xl border-2 ${theme.cardBorder} p-6 shadow-lg`}>
             <div className="flex items-center justify-between mb-3">
               <div className="w-12 h-12 bg-red-500/10 rounded-xl flex items-center justify-center">
                 <XCircle size={24} className="text-red-500" />
@@ -322,7 +339,7 @@ const SuccessStoriesAdmin = () => {
         </div>
 
         {/* Search and Filters */}
-        <div className={`${theme.cardBg} rounded-2xl border ${theme.cardBorder} mb-6 p-5`}>
+        <div className={`${theme.cardBg} rounded-3xl border-2 ${theme.cardBorder} shadow-xl mb-8 p-6`}>
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="flex-1 relative">
               <Search className={`absolute left-4 top-1/2 transform -translate-y-1/2 ${theme.textMuted}`} size={20} />

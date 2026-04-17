@@ -5,20 +5,33 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Shield, Users, Building2, Briefcase, TrendingUp, Activity, Settings, BookOpen,
   LogOut, Moon, Sun, Menu, Search, Eye, Edit, Link as LinkIcon,
-  Trash2, CheckCircle, XCircle, AlertCircle, Clock, X,
-  Calendar, BarChart3, FileText, UserCheck, Pause, Play, Ban, ChevronDown, ArrowRight, Zap, Target, Award, MessageSquare, Bell, Home
+  Trash2, CheckCircle, XCircle, AlertCircle, Clock,
+  Calendar, BarChart3, FileText, UserCheck, Pause, Play, Ban, ArrowRight, Zap, Target, Award, MessageSquare, Bell, Home, Loader2
 } from 'lucide-react';
 import { adminService, type UpdateUserData } from '@/lib/admin-service';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from "@/contexts/LanguageContext";
+import UserManagement from './user-management';
+import JobPostings from './job-postings';
+import CompanyManagement from './employers';
+import Analytics from './analytics';
+import AdminEmployees from './employees';
+import AdminApplications from './applications';
+import AdminApprovals from './approvals';
+import AdminStories from './success-stories';
+import AdminSettings from './settings';
+import { AdminEmbeddedProvider } from '@/components/AdminBackButton';
 
 const AdminDashboard: React.FC = () => {
   const { theme, setTheme } = useTheme();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   const { t } = useLanguage();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === 'undefined') return 'dashboard';
+    return window.location.pathname.split('/admin/')[1] || 'dashboard';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [showBackConfirmation, setShowBackConfirmation] = useState(false);
@@ -481,27 +494,54 @@ const AdminDashboard: React.FC = () => {
     fetchData();
   }, []);
 
-  // Sync activeTab with route when location changes (keeps sidebar highlighted)
-  React.useEffect(() => {
-    const path = location.pathname.split('/admin/')[1] || 'dashboard';
-    setActiveTab(path);
-  }, [location.pathname]);
-
   const handleLogout = async () => {
+    const logoutToast = toast({
+      title: "Logging out...",
+      description: (
+        <span className="inline-flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Please wait
+        </span>
+      ),
+    });
+
     try {
       await logout();
+      logoutToast.update({
+        id: logoutToast.id,
+        title: "",
+        className: "border-0 bg-white text-gray-800 p-0 pr-8 overflow-hidden min-h-[72px]",
+        duration: 1800,
+        description: (
+          <div className="relative w-full px-4 py-4">
+            <div className="flex items-center gap-3">
+              <span className="w-9 h-9 rounded-full bg-green-500 flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-white" />
+              </span>
+              <span className="text-xl leading-none font-medium text-gray-600">Logout Successful</span>
+            </div>
+            <span className="absolute bottom-0 left-0 h-1 bg-green-500 animate-[logout-progress-fill_1.8s_linear_forwards]" />
+          </div>
+        ),
+      });
     } catch (e) {
       console.warn('Logout failed:', e);
+      logoutToast.update({
+        id: logoutToast.id,
+        title: "Logout failed",
+        description: "Something went wrong while logging out.",
+        variant: "destructive",
+      });
+      return;
     }
+
     navigate('/login', { replace: true });
   };
 
   const NavItem = ({ icon: Icon, label, id, badge }: any) => (
     <button
       onClick={() => {
-        setActiveTab(id);
-        const to = id === 'dashboard' ? '/admin' : `/admin/${id}`;
-        navigate(to);
+        changeTab(id);
       }}
       className={`w-full flex items-center justify-between px-5 py-3.5 rounded-xl transition-all group ${
         activeTab === id
@@ -553,6 +593,61 @@ const AdminDashboard: React.FC = () => {
     const config = configs[status as keyof typeof configs] || configs.active;
     const Icon = config.icon;
     return { ...config, Icon };
+  };
+
+  const validTabs = new Set([
+    'dashboard',
+    'users',
+    'jobs',
+    'companies',
+    'analytics',
+    'employees',
+    'applications',
+    'approvals',
+    'stories',
+    'settings',
+  ]);
+
+  const changeTab = (tabId: string) => {
+    const nextTab = validTabs.has(tabId) ? tabId : 'dashboard';
+    setActiveTab(nextTab);
+    const nextPath = nextTab === 'dashboard' ? '/admin' : `/admin/${nextTab}`;
+    if (location.pathname !== nextPath) {
+      navigate(nextPath);
+    }
+  };
+
+  useEffect(() => {
+    const pathTab = location.pathname.split('/admin/')[1] || 'dashboard';
+    const normalized = validTabs.has(pathTab) ? pathTab : 'dashboard';
+    if (normalized !== activeTab) {
+      setActiveTab(normalized);
+    }
+  }, [location.pathname, activeTab]);
+
+  const renderEmbeddedTab = () => {
+    switch (activeTab) {
+      case 'users':
+        return <UserManagement />;
+      case 'jobs':
+        return <JobPostings />;
+      case 'companies':
+        return <CompanyManagement />;
+      case 'analytics':
+        return <Analytics />;
+      case 'employees':
+        return <AdminEmployees />;
+      case 'applications':
+        return <AdminApplications />;
+      case 'approvals':
+        return <AdminApprovals />;
+      case 'stories':
+        return <AdminStories />;
+      case 'settings':
+        return <AdminSettings />;
+      default:
+        return null;
+    }
   };
 
   return (
@@ -607,9 +702,14 @@ const AdminDashboard: React.FC = () => {
                 <div className="flex items-center gap-6">
                   <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className={`p-3 rounded-xl transition-all ${darkMode ? 'hover:bg-gray-700 text-gray-300 hover:shadow-lg' : 'hover:bg-gray-100 text-gray-600'}`}
+                    className={`p-2.5 rounded-xl border transition-all ${
+                      darkMode
+                        ? 'bg-gray-900/40 border-gray-700 text-gray-300 hover:bg-gray-800 hover:shadow-lg'
+                        : 'bg-white/70 border-gray-200 text-gray-600 hover:bg-gray-100'
+                    }`}
+                    aria-label="Toggle sidebar"
                   >
-                    {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                    <Menu className="w-5 h-5" />
                   </button>
                   
                   <div className="flex items-center gap-4">
@@ -628,7 +728,11 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div
+                  className={`flex items-center gap-2 rounded-2xl p-1.5 border shadow-sm ${
+                    darkMode ? 'bg-gray-900/30 border-white/10' : 'bg-white/60 border-gray-200'
+                  }`}
+                >
                   <button
                     onClick={() => setTheme(darkMode ? 'light' : 'dark')}
                     className={`p-2.5 rounded-xl transition-all shadow-md ${darkMode ? 'bg-gradient-to-br from-gray-700 to-gray-600 text-yellow-400 hover:shadow-lg hover:shadow-yellow-500/20' : 'bg-gradient-to-br from-gray-100 to-gray-200 text-gray-700 hover:shadow-lg'}`}
@@ -699,33 +803,37 @@ const AdminDashboard: React.FC = () => {
                     )}
                   </div>
 
-                  <div className="relative group">
-                    <button className={`flex items-center gap-2 p-2 pr-3 rounded-xl transition-all ${darkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'}`}>
-                      <div className="w-9 h-9 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
-                        {admin.avatar}
-                      </div>
-                      <ChevronDown className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
-                    </button>
-
-                    <div className={`absolute right-0 mt-2 w-56 rounded-xl shadow-2xl border py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all ${
-                      darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                    }`}>
-                      <div className={`px-4 py-3 border-b ${darkMode ? 'border-gray-700' : 'border-gray-100'}`}>
-                        <p className={`font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{admin.name}</p>
-                        <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{admin.email}</p>
-                      </div>
-                      <button onClick={() => navigate('/admin/settings')} className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-gray-700 text-gray-300' : 'hover:bg-gray-50 text-gray-700'}`}>
-                        <Settings className="w-4 h-4" />
-                        Settings
-                      </button>
-                      <div className={`border-t ${darkMode ? 'border-gray-700' : 'border-gray-100'} mt-2 pt-2`}>
-                        <button onClick={handleLogout} className={`w-full px-4 py-2 text-left flex items-center gap-3 ${darkMode ? 'hover:bg-red-500/10 text-red-400' : 'hover:bg-red-50 text-red-600'}`}>
-                          <LogOut className="w-4 h-4" />
-                          Logout
-                        </button>
-                      </div>
+                  <button
+                    onClick={() => changeTab('settings')}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-all ${
+                      darkMode
+                        ? 'bg-gray-700/40 border-gray-600 hover:bg-gray-700'
+                        : 'bg-white/80 border-gray-200 hover:bg-white'
+                    }`}
+                    title="Open settings"
+                  >
+                    <div className="w-9 h-9 bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">
+                      {admin.avatar}
                     </div>
-                  </div>
+                    <div className="hidden md:block text-left">
+                      <p className={`text-sm font-semibold leading-tight ${darkMode ? 'text-white' : 'text-gray-900'}`}>{admin.name}</p>
+                      <p className={`text-xs leading-tight ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>{admin.email}</p>
+                    </div>
+                  </button>
+
+                  {/* Easy logout */}
+                  <button
+                    onClick={handleLogout}
+                    className={`ml-1 flex items-center gap-2 px-3.5 py-2 rounded-xl font-bold transition-all shadow-md ${
+                      darkMode
+                        ? 'bg-gradient-to-r from-red-500/90 to-rose-500/90 text-white hover:from-red-500 hover:to-rose-500 hover:shadow-lg hover:shadow-red-500/20'
+                        : 'bg-gradient-to-r from-red-500 to-rose-500 text-white hover:shadow-lg hover:shadow-red-500/25'
+                    }`}
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span className="hidden md:inline">Logout</span>
+                  </button>
                 </div>
               </div>
             </div>
@@ -821,7 +929,14 @@ const AdminDashboard: React.FC = () => {
 
             {/* Main Content */}
             <main className={`flex-1 min-h-screen pt-28 px-6 pb-6 transition-all duration-300 ${sidebarOpen ? 'lg:ml-80' : 'ml-0'}`}>
-              <div className="max-w-[1800px] mx-auto space-y-6">
+              {activeTab !== 'dashboard' && (
+                <div className="admin-embedded-ui max-w-[1800px] mx-auto">
+                  <AdminEmbeddedProvider value={{ embedded: true }}>
+                    {renderEmbeddedTab()}
+                  </AdminEmbeddedProvider>
+                </div>
+              )}
+              <div className={`admin-embedded-ui max-w-[1800px] mx-auto space-y-6 ${activeTab !== 'dashboard' ? 'hidden' : ''}`}>
                 {/* Header with Welcome Message */}
                 <div className={`rounded-2xl p-8 shadow-xl ${darkMode ? 'bg-gray-800/90 border-gray-700' : 'bg-white/90 border-gray-200'} backdrop-blur-xl`}>
                   <div className="flex items-center justify-between flex-wrap gap-4">
@@ -996,7 +1111,7 @@ const AdminDashboard: React.FC = () => {
                         Recent Users
                       </h2>
                       <button 
-                        onClick={() => navigate('/admin/users')}
+                        onClick={() => changeTab('users')}
                         className={`flex items-center gap-3 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                           darkMode 
                             ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' 
@@ -1141,7 +1256,7 @@ const AdminDashboard: React.FC = () => {
                       
                       <div className="grid grid-cols-2 gap-4">
                         <button 
-                          onClick={() => navigate('/admin/users')}
+                          onClick={() => changeTab('users')}
                           className={`p-4 rounded-xl border transition-all hover:shadow-lg flex flex-col items-center gap-2 ${
                             darkMode 
                               ? 'border-gray-700 hover:bg-gray-700/50 text-gray-300' 
@@ -1153,7 +1268,7 @@ const AdminDashboard: React.FC = () => {
                         </button>
                         
                         <button 
-                          onClick={() => navigate('/admin/jobs')}
+                          onClick={() => changeTab('jobs')}
                           className={`p-4 rounded-xl border transition-all hover:shadow-lg flex flex-col items-center gap-2 ${
                             darkMode 
                               ? 'border-gray-700 hover:bg-gray-700/50 text-gray-300' 
@@ -1165,7 +1280,7 @@ const AdminDashboard: React.FC = () => {
                         </button>
                         
                         <button 
-                          onClick={() => navigate('/admin/analytics')}
+                          onClick={() => changeTab('analytics')}
                           className={`p-4 rounded-xl border transition-all hover:shadow-lg flex flex-col items-center gap-2 ${
                             darkMode 
                               ? 'border-gray-700 hover:bg-gray-700/50 text-gray-300' 
@@ -1177,7 +1292,7 @@ const AdminDashboard: React.FC = () => {
                         </button>
                         
                         <button 
-                          onClick={() => navigate('/admin/settings')}
+                          onClick={() => changeTab('settings')}
                           className={`p-4 rounded-xl border transition-all hover:shadow-lg flex flex-col items-center gap-2 ${
                             darkMode 
                               ? 'border-gray-700 hover:bg-gray-700/50 text-gray-300' 

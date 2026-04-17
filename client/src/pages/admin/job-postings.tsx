@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminBackButton from '@/components/AdminBackButton';
+import AdminBackButton, { useAdminEmbedded } from '@/components/AdminBackButton';
 import {
   Briefcase, Search, Plus, Edit, Trash2, MoreVertical, DollarSign, MapPin, Building2, Users, CheckCircle, XCircle, Clock, Filter, Pause, Play, Save, TrendingUp, Eye, PauseCircle
 } from 'lucide-react';
@@ -41,6 +41,7 @@ interface Job {
 }
 
 export default function JobPostings() {
+  const { embedded } = useAdminEmbedded();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -178,24 +179,24 @@ export default function JobPostings() {
   ];
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+    <div className={`${embedded ? '' : `min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8`}`}>
       {/* Header */}
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}>
-        <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className={`${embedded ? 'mb-6' : `${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border-b`}`}>
+        <div className={`${embedded ? '' : 'max-w-7xl mx-auto px-6 py-6'}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="mr-4"><AdminBackButton /></div>
-              <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-4 rounded-2xl shadow-lg">
+              <div className="bg-gradient-to-br from-orange-500 to-amber-600 p-4 rounded-2xl shadow-lg shadow-orange-500/40">
                 <Briefcase className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className={`text-3xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Admin Job Postings</h1>
-                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-500'} mt-1`}>Create and manage jobs posted by admin team</p>
+                <h1 className={`text-4xl font-black ${darkMode ? 'text-white' : 'bg-gradient-to-r from-orange-500 to-amber-600 bg-clip-text text-transparent'}`}>Admin Job Postings</h1>
+                <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>Create and manage jobs posted by admin team</p>
               </div>
             </div>
             <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
               <DialogTrigger asChild>
-                <button className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-orange-700 text-white px-6 py-3 rounded-lg hover:from-orange-700 hover:to-orange-800 transition-all shadow-lg shadow-orange-900/20">
+                <button className="flex items-center gap-2 bg-gradient-to-r from-orange-600 to-amber-700 text-white px-6 py-3 rounded-xl hover:from-orange-700 hover:to-amber-800 transition-all shadow-lg">
                   <Plus className="w-5 h-5" />
                   Post New Job
                 </button>
@@ -275,11 +276,11 @@ export default function JobPostings() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className={`${embedded ? '' : 'max-w-7xl mx-auto px-6 py-8'}`}>
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {stats.map((stat, index) => (
-            <div key={index} className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-sm border p-6 hover:shadow-md transition-all`}>
+            <div key={index} className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-3xl shadow-lg border-2 p-6 hover:shadow-xl transition-all`}>
               <div className="flex items-center justify-between mb-4">
                 <div className={`${darkMode ? stat.color + '/20' : stat.bgLight} p-3 rounded-lg`}>
                   <stat.icon className={`w-6 h-6 ${stat.color.replace('bg-', 'text-')}`} />
@@ -296,7 +297,7 @@ export default function JobPostings() {
         </div>
 
         {/* Main Content Card */}
-        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} rounded-xl shadow-sm border`}>
+        <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-3xl shadow-xl border-2`}>
           {/* Search and Filter Bar */}
           <div className={`p-6 border-b ${darkMode ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex flex-col sm:flex-row gap-4">
@@ -307,8 +308,8 @@ export default function JobPostings() {
                   placeholder="Search jobs by title, company, or location..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className={`w-full pl-11 pr-4 py-3 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all ${
-                    darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                  className={`w-full pl-11 pr-4 py-4 border-2 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none transition-all ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400' : 'bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-500'
                   }`}
                 />
               </div>
@@ -316,8 +317,8 @@ export default function JobPostings() {
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className={`px-4 py-3 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none cursor-pointer ${
-                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-white border-gray-300 text-gray-900'
+                  className={`px-4 py-3 border-2 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none cursor-pointer ${
+                    darkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
                   }`}
                 >
                   <option>All Status</option>

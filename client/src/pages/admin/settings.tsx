@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import AdminBackButton from '@/components/AdminBackButton';
+import AdminBackButton, { useAdminEmbedded } from '@/components/AdminBackButton';
 import { useNavigate } from 'react-router-dom';
 import {
   Settings, Shield, Bell, Mail, Lock, Globe, Users, Database,
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 const AdminSettings: React.FC = () => {
+  const { embedded } = useAdminEmbedded();
   type SectionKey = 'general' | 'notifications' | 'security' | 'backup' | 'api';
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
@@ -41,9 +42,9 @@ const AdminSettings: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-8">
+    <div className={`${embedded ? '' : 'min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-8'}`}>
       {/* Header */}
-      <div className="max-w-6xl mx-auto mb-8">
+      <div className={`${embedded ? 'mb-6' : 'max-w-6xl mx-auto mb-8'}`}>
         <div className="mb-4">
           <AdminBackButton />
         </div>
@@ -71,7 +72,7 @@ const AdminSettings: React.FC = () => {
         )}
       </div>
 
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className={`${embedded ? 'space-y-6' : 'max-w-6xl mx-auto space-y-6'}`}>
         {/* Section Navigator */}
         <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border-2 border-gray-100 dark:border-gray-700 p-5 sticky top-4 z-20">
           <div className="flex items-center gap-2 mb-3">

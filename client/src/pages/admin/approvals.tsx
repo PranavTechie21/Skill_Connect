@@ -1,30 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import AdminBackButton from '@/components/AdminBackButton';
+import AdminBackButton, { useAdminEmbedded } from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import {
-  AlertCircle, Building2, Briefcase, CheckCircle, XCircle, Clock,
-  Eye, Mail, MapPin, Calendar, User, Shield, Star, DollarSign,
-  Users, FileText, ExternalLink, Filter, Search, ChevronDown,
-  ThumbsUp, ThumbsDown, MessageSquare, Info, Zap, Award, Crown
+  AlertCircle, Building2, Briefcase, CheckCircle, XCircle,
+  Eye, MapPin, Calendar, User, Search
 } from 'lucide-react';
 import { adminService } from '@/lib/admin-service';
 import { useToast } from '@/hooks/use-toast';
 
 interface PendingItem {
   id: string;
-  type: 'employer' | 'job' | 'application';
-  title: string;
-  subtitle: string;
-  submittedBy: string;
-  submittedDate: string;
-  status: 'pending';
-  priority: 'high' | 'medium' | 'low';
-  details: any;
+  type: 'employer' | 'job' | 'application' | 'story';
+  title?: string;
+  subtitle?: string;
+  submittedBy?: string;
+  submittedDate?: string;
+  status?: string;
+  priority?: 'high' | 'medium' | 'low';
+  details?: Record<string, any>;
 }
 
 const AdminApprovals: React.FC = () => {
+  const { embedded } = useAdminEmbedded();
   const [pendingItems, setPendingItems] = useState<PendingItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'employer' | 'job'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
@@ -33,16 +31,114 @@ const AdminApprovals: React.FC = () => {
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   const { toast } = useToast();
 
+  const normalizePendingItem = (raw: any): PendingItem => {
+    const type = (raw?.type ?? 'application') as PendingItem["type"];
+    const data = (raw?.data ?? {}) as Record<string, any>;
+
+    // Prefer readable fields from the server when available.
+    const title =
+      raw?.title ??
+      (type === "story"
+        ? data?.title
+        : type === "application"
+          ? "Job Application"
+          : "Pending Approval");
+
+    const subtitle =
+      raw?.subtitle ??
+      (type === "story"
+        ? data?.submitterName || data?.submitterEmail || "Submitter"
+        : data?.applicantId
+          ? `Applicant ${formatShortId(String(data.applicantId))}`
+          : "Applicant");
+
+    const submittedBy =
+      raw?.submittedBy ??
+      (type === "story" ? data?.submitterName || data?.submitterEmail : data?.applicantId);
+
+    const submittedDate =
+      raw?.submittedDate ??
+      raw?.createdAt ??
+      data?.appliedAt ??
+      data?.submittedAt ??
+      data?.createdAt ??
+      "";
+
+    return {
+      id: String(raw?.id ?? ""),
+      type,
+      title: title ? String(title) : undefined,
+      subtitle: subtitle ? String(subtitle) : undefined,
+      submittedBy: submittedBy ? String(submittedBy) : undefined,
+      submittedDate: submittedDate ? String(submittedDate) : undefined,
+      status: raw?.status ? String(raw.status) : undefined,
+      priority: (raw?.priority ?? data?.priority ?? "low") as PendingItem["priority"],
+      details: (raw?.details ?? data) as Record<string, any>,
+    };
+  };
+
+  const detailKeyToLabel = (key: string) => {
+    // Convert snake_case and camelCase to spaced words
+    const spaced = String(key)
+      .replace(/_/g, " ")
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .trim();
+
+    // Prefer common abbreviations
+    return spaced
+      .replace(/\bId\b/g, "ID")
+      .replace(/\bUrl\b/g, "URL");
+  };
+
+  const formatShortId = (value?: string) => {
+    if (!value) return "N/A";
+    const str = String(value);
+    return str.length > 18 ? `${str.slice(0, 8)}...${str.slice(-6)}` : str;
+  };
+
+  const formatDateTime = (value?: string) => {
+    if (!value) return "N/A";
+    const date = new Date(value);
+    return Number.isNaN(date.valueOf()) ? String(value) : date.toLocaleString();
+  };
+
+  const detailValueToDisplay = (value: any, key?: string) => {
+    if (value === null || value === undefined || value === "") return "N/A";
+
+    // Render ISO-ish dates nicely when key suggests it's a timestamp.
+    const keyLower = key ? key.toLowerCase() : "";
+    if (typeof value === "string" && keyLower.includes("at")) {
+      const d = new Date(value);
+      if (!Number.isNaN(d.valueOf())) return d.toLocaleString();
+    }
+
+    if (Array.isArray(value)) {
+      if (value.length === 0) return "N/A";
+      return value.map((v) => (typeof v === "string" ? v : JSON.stringify(v))).join(", ");
+    }
+
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return String(value);
+      }
+    }
+
+    return String(value);
+  };
+
   const fetchApprovals = async () => {
-    setLoading(true);
     try {
       const data = await adminService.getApprovals();
-      setPendingItems(data);
+      if (Array.isArray(data)) {
+        setPendingItems(data.map(normalizePendingItem));
+      } else {
+        setPendingItems([]);
+      }
     } catch (error) {
       console.error("Failed to fetch approvals:", error);
       toast({ title: "Error", description: "Could not fetch pending approvals.", variant: "destructive" });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -52,8 +148,10 @@ const AdminApprovals: React.FC = () => {
 
   const filteredItems = pendingItems.filter(item => {
     const matchesFilter = filter === 'all' || item.type === filter;
-    const matchesSearch = item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
+    const title = (item.title ?? "").toLowerCase();
+    const subtitle = (item.subtitle ?? "").toLowerCase();
+    const q = searchQuery.toLowerCase();
+    const matchesSearch = title.includes(q) || subtitle.includes(q);
     return matchesFilter && matchesSearch;
   });
 
@@ -82,14 +180,14 @@ const AdminApprovals: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen p-8 ${
+    <div className={`${embedded ? '' : 'min-h-screen p-8'} ${
       darkMode 
         ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
         : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'
     }`}>
-      <div className="max-w-7xl mx-auto">
+      <div className={`${embedded ? 'space-y-6' : 'max-w-7xl mx-auto'}`}>
         {/* Header */}
-        <div className="mb-8">
+        <div className={`${embedded ? 'mb-6' : 'mb-8'}`}>
           <div className="mb-4"><AdminBackButton /></div>
           <div className="flex items-center gap-4 mb-4">
             <div className="p-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl shadow-lg shadow-amber-500/50 animate-pulse-slow">
@@ -184,7 +282,7 @@ const AdminApprovals: React.FC = () => {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
-                Jobs ({jobCount})
+                Job Posts ({jobCount})
               </button>
             </div>
           </div>
@@ -202,7 +300,7 @@ const AdminApprovals: React.FC = () => {
               }`}
             >
               {/* Priority Banner */}
-              <div className={`h-2 bg-gradient-to-r ${getPriorityColor(item.priority)}`}></div>
+              <div className={`h-2 bg-gradient-to-r ${getPriorityColor(item.priority ?? "low")}`}></div>
 
               <div className="p-6">
                 {/* Header */}
@@ -220,7 +318,7 @@ const AdminApprovals: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className={`text-xl font-black ${darkMode ? 'text-white' : 'text-gray-900'}`}>{item.title}</h3>
                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${
                           darkMode ? (
@@ -240,24 +338,24 @@ const AdminApprovals: React.FC = () => {
                       <div className={`flex items-center gap-3 mt-2 text-sm ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         <span className="flex items-center gap-1">
                           <User className="w-4 h-4" />
-                          {item.submittedBy}
+                          {formatShortId(item.submittedBy)}
                         </span>
                         <span className="flex items-center gap-1">
                           <Calendar className="w-4 h-4" />
-                          {item.submittedDate}
+                          {formatDateTime(item.submittedDate)}
                         </span>
                       </div>
                     </div>
                   </div>
 
                   <div className={`px-3 py-1.5 rounded-xl text-xs font-bold border-2 ${
-                    item.priority === 'high'
+                    (item.priority ?? 'low') === 'high'
                       ? 'bg-red-50 text-red-700 border-red-200'
-                      : (item.priority || 'low') === 'medium'
+                      : (item.priority ?? 'low') === 'medium'
                       ? 'bg-amber-50 text-amber-700 border-amber-200'
                       : 'bg-blue-50 text-blue-700 border-blue-200'
                   }`}>
-                    {(item.priority || 'low').toUpperCase()}
+                    {(item.priority ?? 'low').toUpperCase()}
                   </div>
                 </div>
 
@@ -278,6 +376,31 @@ const AdminApprovals: React.FC = () => {
                         <p className={`text-sm font-bold flex items-center gap-1 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
                           <MapPin className="w-4 h-4" />
                           {item.details?.location || 'N/A'}
+                        </p>
+                      </div>
+                    </>
+                  ) : item.type === 'application' ? (
+                    <>
+                      <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                        <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Applicant Name</p>
+                        <p className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {item.details?.applicantName || item.subtitle || 'N/A'}
+                        </p>
+                      </div>
+                      <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                        <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Job Title</p>
+                        <p className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {item.details?.jobTitle || item.title || 'N/A'}
+                        </p>
+                      </div>
+                      <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                        <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Application Status</p>
+                        <p className={`text-sm font-bold capitalize ${darkMode ? 'text-white' : 'text-gray-900'}`}>{item.details?.status || 'N/A'}</p>
+                      </div>
+                      <div className={`p-3 rounded-xl ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                        <p className={`text-xs font-semibold mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Submitted</p>
+                        <p className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {formatDateTime(item.details?.appliedAt)}
                         </p>
                       </div>
                     </>
@@ -409,12 +532,14 @@ const AdminApprovals: React.FC = () => {
                   <div>
                     <p className={`text-sm font-bold mb-2 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>DETAILS</p>
                     <div className={`rounded-2xl p-6 space-y-3 ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
-                      {Object.entries(selectedItem.details).map(([key, value]) => (
+                      {Object.entries(selectedItem.details ?? {}).map(([key, value]) => (
                         <div key={key} className="flex justify-between">
                           <span className={`font-semibold capitalize ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                            {key.replace(/([A-Z])/g, ' $1')}
+                            {detailKeyToLabel(key)}
                           </span>
-                          <span className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>{value as string}</span>
+                          <span className={`font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {detailValueToDisplay(value, key)}
+                          </span>
                         </div>
                       ))}
                     </div>

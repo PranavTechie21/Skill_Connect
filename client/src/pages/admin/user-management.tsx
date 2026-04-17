@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { adminService } from '@/lib/admin-service';
 import { useToast } from '@/hooks/use-toast';
-import AdminBackButton from '@/components/AdminBackButton';
+import AdminBackButton, { useAdminEmbedded } from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 
 // Types
@@ -890,6 +890,7 @@ const ConfirmationModal = ({
   // Main Component
 const UserManagement = () => {
   const { theme } = useTheme();
+  const { embedded } = useAdminEmbedded();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   
   const [users, setUsers] = useState<DisplayUser[]>([]);
@@ -1098,10 +1099,10 @@ const UserManagement = () => {
 
 
 
-      <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8`}>
-        <div className="max-w-7xl mx-auto">
+      <div className={`${embedded ? '' : `min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8`}`}>
+        <div className={`${embedded ? 'space-y-8' : 'max-w-7xl mx-auto'}`}>
           {/* Header */}
-          <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+          <div className={`${embedded ? 'mb-6 flex flex-col md:flex-row md:items-end md:justify-between gap-5' : 'mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6'}`}>
             <div>
               <div className="mb-4"><AdminBackButton /></div>
               <div className="flex items-center gap-4">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import AdminBackButton from '@/components/AdminBackButton';
+import AdminBackButton, { useAdminEmbedded } from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import {
   FileText, Search, Filter, Eye, CheckCircle, XCircle, Clock,
@@ -30,6 +30,7 @@ interface Application {
 }
 
 const AdminApplications: React.FC = () => {
+  const { embedded } = useAdminEmbedded();
   const { theme } = useTheme();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   const [applications, setApplications] = useState<Application[]>([]);
@@ -287,10 +288,10 @@ const AdminApplications: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8`}>
-      <div className="max-w-7xl mx-auto">
+    <div className={`${embedded ? '' : `min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8`}`}>
+      <div className={`${embedded ? 'space-y-6' : 'max-w-7xl mx-auto'}`}>
         {/* Header */}
-        <div className="mb-8">
+        <div className={`${embedded ? 'mb-6' : 'mb-8'}`}>
           <div className="mb-4"><AdminBackButton /></div>
           <div className="flex items-center gap-4 mb-6">
             <div className="p-4 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl shadow-lg shadow-indigo-500/50 animate-pulse-slow">

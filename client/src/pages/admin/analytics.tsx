@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import AdminBackButton from '@/components/AdminBackButton';
+import AdminBackButton, { useAdminEmbedded } from '@/components/AdminBackButton';
 import { useTheme } from '@/components/theme-provider';
 import {
   BarChart3, TrendingUp, Users, Briefcase, ArrowUp, ArrowDown,
@@ -142,6 +142,7 @@ const transformByRange = (range: TimeRangeKey): AnalyticsData => {
 
 const Analytics = () => {
   const { theme } = useTheme();
+  const { embedded } = useAdminEmbedded();
   const darkMode = typeof window !== 'undefined' && (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches));
   const [timeRange, setTimeRange] = useState<TimeRangeKey>('30d');
   const [loading, setLoading] = useState(false);
@@ -307,7 +308,7 @@ const Analytics = () => {
   };
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8 relative overflow-hidden`}>
+    <div className={`${embedded ? 'relative overflow-hidden' : `min-h-screen ${darkMode ? 'bg-gray-900' : 'bg-gradient-to-br from-indigo-50 via-white to-purple-50'} p-8 relative overflow-hidden`}`}>
       {/* Animated Background Elements - Only show in light mode */}
       {!darkMode && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -318,7 +319,7 @@ const Analytics = () => {
       )}
 
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8 relative z-10">
+      <div className={`${embedded ? 'mb-6 relative z-10' : 'max-w-7xl mx-auto mb-8 relative z-10'}`}>
         <div className="mb-4">
           <AdminBackButton />
         </div>
